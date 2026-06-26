@@ -81,13 +81,14 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 
 ### Phase 2 — Autonomous Commander AI 🔄
 
-- [ ] **Air unit initial state** — `airborne` field on Unit; ground units wait for tasking; airborne units auto-fly a holding orbit when no mission active; builder toggle per unit
-- [ ] **Area patrol (non-targeted)** — `area_patrol` mission type with embedded `patrol_lat/lon`; no objective link; for CAP, naval patrol lanes, ASW sweeps; UnitPanel supports it
+- [x] **Air unit initial state** — `airborne` field on Unit; ground units wait for tasking; airborne units auto-fly a holding orbit when no mission active; builder snaps ground units to nearest airfield/base; builder toggle per unit
+- [x] **Area patrol (non-targeted)** — `area_patrol` mission type with embedded `patrol_lat/lon`; no objective link; for CAP, naval patrol lanes, ASW sweeps; UnitPanel supports it
 - [ ] Side-level goals in scenario JSON (`"goals": [{"type": "hold", "objective": "amari_ab"}]`)
 - [ ] Commander AI per side: re-evaluates every N ticks and assigns/reassigns unit missions
 - [ ] Player interface: assign goals to a side, not missions to individual units
 - [ ] Reactive rules: fighters scramble when enemy air detected within sensor range
 - [ ] Basic threat priority: commander weighs which objectives are under pressure
+- [ ] Dispersed basing — aircraft capable of operating from roads/unprepared strips (Su-34, A-10) can be placed freely; requires `dispersed_basing: true` in unit_types.json
 
 ---
 

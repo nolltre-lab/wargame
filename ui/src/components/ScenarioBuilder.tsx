@@ -107,6 +107,28 @@ export function ScenarioBuilder({ onExit }: Props) {
     if (!placingType) return;
     const info = unitTypes[placingType];
     if (!info) return;
+
+    let placeLat = lat;
+    let placeLon = lon;
+    const isAir = info.unit_class === 'air';
+
+    // Ground-based air units must snap to the nearest airfield / base objective.
+    // If no suitable objective exists, block placement and warn.
+    if (isAir) {
+      const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
+      if (airfields.length === 0) {
+        alert('No airfields or bases on the map. Add an airfield objective first, or set the unit to AIRBORNE.');
+        return;
+      }
+      // Snap to the nearest airfield (Euclidean on lat/lon is close enough at this scale)
+      const nearest = airfields.reduce((best, o) => {
+        const d = Math.hypot(o.lat - lat, o.lon - lon);
+        return d < Math.hypot(best.lat - lat, best.lon - lon) ? o : best;
+      });
+      placeLat = nearest.lat;
+      placeLon = nearest.lon;
+    }
+
     const count = placedUnits.filter(u => u.unit_type === placingType && u.side === activeSide).length + 1;
     const sidc = sidcForUnit(placingType, activeSide);
     const unit: BuilderUnit = {
@@ -115,12 +137,13 @@ export function ScenarioBuilder({ onExit }: Props) {
       unit_type:  placingType,
       unit_class: info.unit_class,
       sidc,
-      lat, lon,
+      lat: placeLat,
+      lon: placeLon,
       name:       `${info.display_name} (${activeSide === 'blue' ? 'Blue' : 'Red'}) #${count}`,
-      airborne:   info.unit_class === 'air' ? false : true,  // air units default to ground-ready
+      airborne:   isAir ? false : true,
     };
     setPlacedUnits(prev => [...prev, unit]);
-  }, [placingType, placedUnits, activeSide, unitTypes]);
+  }, [placingType, placedUnits, activeSide, unitTypes, objectives]);
 
   // ── Select a placed unit (click in sidebar = delete) ─────────────────────
   const handleUnitClick = useCallback((id: string) => {
@@ -371,9 +394,27 @@ export function ScenarioBuilder({ onExit }: Props) {
                     {([false, true] as const).map(val => (
                       <button
                         key={String(val)}
-                        onClick={() => setPlacedUnits(prev => prev.map(u =>
-                          u.id === selectedId ? { ...u, airborne: val } : u
-                        ))}
+                        onClick={() => {
+                          if (val === false) {
+                            // Snapping to ground — find nearest airfield
+                            const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
+                            if (airfields.length === 0) {
+                              alert('No airfields or bases on the map. Add an airfield objective first.');
+                              return;
+                            }
+                            const nearest = airfields.reduce((best, o) => {
+                              const d = Math.hypot(o.lat - (sel?.lat ?? 0), o.lon - (sel?.lon ?? 0));
+                              return d < Math.hypot(best.lat - (sel?.lat ?? 0), best.lon - (sel?.lon ?? 0)) ? o : best;
+                            });
+                            setPlacedUnits(prev => prev.map(u =>
+                              u.id === selectedId ? { ...u, airborne: false, lat: nearest.lat, lon: nearest.lon } : u
+                            ));
+                          } else {
+                            setPlacedUnits(prev => prev.map(u =>
+                              u.id === selectedId ? { ...u, airborne: true } : u
+                            ));
+                          }
+                        }}
                         style={{
                           flex: 1, padding: '4px',
                           background: sel.airborne === val ? (val ? '#001a3a' : '#1a1000') : 'transparent',
