@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { MapView } from './components/MapView';
 import { UnitPanel } from './components/UnitPanel';
 import { EventLog } from './components/EventLog';
+import { ScenarioBuilder } from './components/ScenarioBuilder';
 import { useSimSocket } from './hooks/useSimSocket';
 import { useSimStore } from './store/simStore';
 import type { RingToggles } from './types';
 
 const API = 'http://localhost:8000';
+const MONO = { fontFamily: '"Courier New", monospace' } as const;
 
 export default function App() {
   const { send } = useSimSocket();
   const running = useSimStore((s) => s.running);
   const [rings, setRings] = useState<RingToggles>({ sensor: false, airWeapon: false, surfaceWeapon: false });
+  const [mode, setMode] = useState<'sim' | 'builder'>('sim');
 
   const toggleSim = async () => {
     const endpoint = running ? '/sim/pause' : '/sim/start';
@@ -22,33 +25,33 @@ export default function App() {
     });
   };
 
+  if (mode === 'builder') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+        <ScenarioBuilder onExit={() => setMode('sim')} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <MapView rings={rings} />
       <UnitPanel onSend={send} />
       <EventLog />
 
-      {/* Sim control + range toggles */}
+      {/* Sim control bar */}
       <div style={{
         position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
         zIndex: 10, display: 'flex', gap: 8, alignItems: 'center',
-        background: 'rgba(8, 12, 22, 0.88)',
-        border: '1px solid #1e2e4a',
-        padding: '8px 16px',
-        fontFamily: '"Courier New", monospace',
-        fontSize: 12,
-        color: '#4a6a8a',
+        background: 'rgba(8, 12, 22, 0.88)', border: '1px solid #1e2e4a',
+        padding: '8px 16px', ...MONO, fontSize: 12, color: '#4a6a8a',
       }}>
         <span style={{ marginRight: 8, letterSpacing: 1 }}>SIM CONTROL</span>
         <button onClick={toggleSim} style={{
           background: running ? '#1a0a00' : '#003318',
           border: `1px solid ${running ? '#cc4422' : '#22cc66'}`,
           color: running ? '#cc4422' : '#22cc66',
-          fontFamily: '"Courier New", monospace',
-          fontSize: 12,
-          padding: '5px 18px',
-          cursor: 'pointer',
-          letterSpacing: 1,
+          ...MONO, fontSize: 12, padding: '5px 18px', cursor: 'pointer', letterSpacing: 1,
         }}>
           {running ? '■  PAUSE' : '▶  RUN  60×'}
         </button>
@@ -61,23 +64,25 @@ export default function App() {
           { key: 'airWeapon'     as const, label: 'A-A/S-A', color: '#ff8800' },
           { key: 'surfaceWeapon' as const, label: 'A-S/S-S', color: '#ff3300' },
         ]).map(({ key, label, color }) => (
-          <button
-            key={key}
-            onClick={() => setRings(r => ({ ...r, [key]: !r[key] }))}
-            style={{
-              background: rings[key] ? `${color}22` : 'transparent',
-              border: `1px solid ${rings[key] ? color : '#2a3e5a'}`,
-              color: rings[key] ? color : '#4a6a8a',
-              fontFamily: '"Courier New", monospace',
-              fontSize: 11,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              letterSpacing: 1,
-            }}
-          >
+          <button key={key} onClick={() => setRings(r => ({ ...r, [key]: !r[key] }))} style={{
+            background: rings[key] ? `${color}22` : 'transparent',
+            border: `1px solid ${rings[key] ? color : '#2a3e5a'}`,
+            color: rings[key] ? color : '#4a6a8a',
+            ...MONO, fontSize: 11, padding: '4px 10px', cursor: 'pointer', letterSpacing: 1,
+          }}>
             {label}
           </button>
         ))}
+
+        <div style={{ width: 1, height: 20, background: '#1e2e4a', margin: '0 4px' }} />
+
+        <button onClick={() => setMode('builder')} style={{
+          background: 'transparent', border: '1px solid #2a4a6a',
+          color: '#4a8aaa', ...MONO, fontSize: 11, padding: '4px 12px',
+          cursor: 'pointer', letterSpacing: 1,
+        }}>
+          ✎ BUILD
+        </button>
       </div>
     </div>
   );

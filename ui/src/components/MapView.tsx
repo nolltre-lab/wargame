@@ -1,76 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import _ms from 'milsymbol';
 import { useSimStore } from '../store/simStore';
 import type { Unit, Objective, CombatEvent, RingToggles } from '../types';
 import {
   circlePolygon, conePolygon, lineFeature, interpolate,
   emptyFC, type RingFeature, type LineFeature,
 } from '../lib/geo';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MilSymbol: new (sidc: string, opts: object) => { asSVG(): string } =
-  (_ms as any).Symbol ?? _ms;
+import { loadSidcImage } from '../lib/milsymbol';
 
 const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 const INITIAL_CENTER: [number, number] = [26.5, 58.8];
 const INITIAL_ZOOM = 6;
-const ICON_CSS = 44;   // icon size in CSS pixels
 const MISSILE_MS = 900;
-
-// ─── Milsymbol → MapLibre raster image ───────────────────────────────────────
-// Rendered on a canvas so MapLibre treats them as regular GeoJSON icon images,
-// positioned identically to the ring layers with no HTML-marker timing issues.
-
-const ICON_CACHE = new Map<string, ImageData>();
-
-async function loadSidcImage(sidc: string): Promise<ImageData> {
-  const hit = ICON_CACHE.get(sidc);
-  if (hit) return hit;
-
-  const dpr = Math.ceil(window.devicePixelRatio || 1);
-  const px = ICON_CSS * dpr; // physical canvas px
-
-  let svgStr: string;
-  try {
-    svgStr = new MilSymbol(sidc, { size: 32 }).asSVG();
-  } catch {
-    svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON_CSS}" height="${ICON_CSS}">
-      <circle cx="${ICON_CSS / 2}" cy="${ICON_CSS / 2}" r="${ICON_CSS / 2 - 3}"
-        fill="#888" stroke="#fff" stroke-width="2"/>
-    </svg>`;
-  }
-
-  return new Promise<ImageData>((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(
-      new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
-    );
-    const draw = (ok: boolean) => {
-      const c = document.createElement('canvas');
-      c.width = px; c.height = px;
-      const ctx = c.getContext('2d')!;
-      if (ok && img.naturalWidth > 0) {
-        const s = Math.min(px / img.naturalWidth, px / img.naturalHeight) * 0.85;
-        const w = img.naturalWidth * s, h = img.naturalHeight * s;
-        ctx.drawImage(img, (px - w) / 2, (px - h) / 2, w, h);
-      } else {
-        ctx.fillStyle = '#888';
-        ctx.beginPath();
-        ctx.arc(px / 2, px / 2, px / 2 - 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      URL.revokeObjectURL(url);
-      const data = ctx.getImageData(0, 0, px, px);
-      ICON_CACHE.set(sidc, data);
-      resolve(data);
-    };
-    img.onload = () => draw(true);
-    img.onerror = () => draw(false);
-    img.src = url;
-  });
-}
 
 // ─── GeoJSON helpers ──────────────────────────────────────────────────────────
 

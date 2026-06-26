@@ -75,3 +75,26 @@ export interface RingToggles {
   airWeapon: boolean;
   surfaceWeapon: boolean;
 }
+
+export interface UnitTypeInfo {
+  display_name: string;
+  unit_class: UnitClass;
+  sensor_km: number;
+  weapon_km: number;
+  attack_per_tick: number;
+  default_hp: number;
+  max_speed_kmh: number;
+  valid_targets: UnitClass[];
+  notes?: string;
+}
+
+export interface BuilderUnit {
+  id: string;
+  side: Side;
+  unit_type: string;
+  unit_class: UnitClass;
+  sidc: string;
+  lat: number;
+  lon: number;
+  name: string;
+}
