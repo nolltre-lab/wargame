@@ -54,27 +54,59 @@ Frontend: http://localhost:5173
 
 ## Development Roadmap
 
-### Phase 1 — Combat + Detection (current)
-- Unit types with sensor/weapon ranges (fighter, armor, artillery, infantry, frigate, cruiser)
-- HP, damage, destruction
-- Two-phase combat resolution per tick (collect attacks → apply simultaneously)
-- Events broadcast over WebSocket; UI shows HP bars and event log
+Status markers: ✅ done · 🔄 in progress · ⬜ not started
 
-### Phase 2 — Autonomous Commander AI
-- Goals defined per-side in scenario JSON (e.g. `"goals": [{"type": "hold", "objective": "amari_ab"}]`)
-- Commander AI per side decomposes goals into unit missions every N ticks
-- Player assigns goals only; AI handles all mission assignment
-- Units react to threat detections (e.g. fighters scramble when enemy air detected)
+---
 
-### Phase 3 — Unit-level Learning
-- After-action record saved per scenario run (outcomes, unit survival, goal achievement)
-- Units carry experience weights that bias tactical choices in subsequent runs
-- Example: an F-16 that died approaching a defended target learns to delay until SEAD
+### Phase 1 — Combat + Detection ✅
 
-### Phase 4 — Team-level Learning
-- Side-level experience aggregated from unit records
-- Commander AI adjusts objective priority and unit assignment across runs
-- Visible improvement: re-running the same scenario yields qualitatively different tactics
+- [x] Unit type library (26 types, open-source data: sensor_km, weapon_km, attack_per_tick, max_speed_kmh)
+- [x] HP, damage, destruction — units persist as `destroyed: true` for UI and future learning
+- [x] Two-phase combat resolution per tick (collect attacks → apply simultaneously, no iteration bias)
+- [x] Goal-oriented unit AI: secure, defend, patrol, intercept missions
+- [x] WebSocket tick broadcast; Zustand store on frontend
+- [x] MapLibre GL map with milsymbol NATO icons as GeoJSON symbol layers (pixel-exact positioning)
+- [x] Toggleable sensor rings (air: forward cone; ground/naval: circle) and weapon rings
+- [x] Missile shot animation (colour-coded by engagement type)
+- [x] Event log feed (engagements + kills)
+- [x] `./start.sh` one-shot launcher with stale-process cleanup
+- [x] Baltic flashpoint scenario (10 units, 9 objectives, NATO vs Russia/Estonia)
+- [x] Git repo initialised
+
+**Known gaps / carry-forward:**
+- [ ] Naval terrain masking — ships can still route across land when chasing naval targets
+- [ ] Objective capture logic — no side flips ownership yet when a unit holds an objective
+
+---
+
+### Phase 2 — Autonomous Commander AI ⬜
+
+- [ ] Side-level goals in scenario JSON (`"goals": [{"type": "hold", "objective": "amari_ab"}]`)
+- [ ] Commander AI per side: re-evaluates every N ticks and assigns/reassigns unit missions
+- [ ] Player interface: assign goals to a side, not missions to individual units
+- [ ] Reactive rules: fighters scramble when enemy air detected within sensor range
+- [ ] Objective capture: controlling side flips when a ground unit holds it uncontested
+- [ ] Basic threat priority: commander weighs which objectives are under pressure
+
+---
+
+### Phase 3 — Unit-level Learning ⬜
+
+- [ ] After-action record saved per scenario run (unit survival, damage dealt/taken, mission outcomes)
+- [ ] Experience weights stored per unit ID / scenario (JSON sidecar alongside scenario file)
+- [ ] Weights bias tactical choices: standoff range, aggression, target priority
+- [ ] Example: F-16 that died approaching a defended target learns to delay until SEAD complete
+- [ ] Requires: `numpy` + `scipy` in sim/requirements.txt
+
+---
+
+### Phase 4 — Team-level Learning ⬜
+
+- [ ] Side-level experience aggregated from all unit after-action records
+- [ ] Commander AI reads team weights to adjust objective priority and unit assignment
+- [ ] PyTorch MPS backend for weight updates (Apple Silicon GPU, never CUDA)
+- [ ] Visible improvement: re-running the same scenario produces qualitatively different tactics
+- [ ] Requires: `torch` (mps device) in sim/requirements.txt
 
 ## Unit Types and Combat Capabilities
 
