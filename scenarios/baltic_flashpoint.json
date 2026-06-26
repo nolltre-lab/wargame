@@ -1,0 +1,232 @@
+{
+  "name": "Baltic Flashpoint",
+  "description": "NATO forward posture vs Russian Western Military District. Assign missions to units and observe autonomous execution.",
+  "start_time": "2024-06-15T04:00:00Z",
+  "tick_duration_seconds": 60,
+  "objectives": [
+    {
+      "id": "amari_ab",
+      "name": "Ämari Air Base",
+      "lat": 59.4820,
+      "lon": 24.0808,
+      "type": "airfield",
+      "controlling_side": "blue"
+    },
+    {
+      "id": "tallinn_port",
+      "name": "Tallinn Port",
+      "lat": 59.4430,
+      "lon": 24.7490,
+      "type": "port",
+      "controlling_side": "blue"
+    },
+    {
+      "id": "narva",
+      "name": "Narva",
+      "lat": 59.3769,
+      "lon": 28.1789,
+      "type": "city",
+      "controlling_side": null
+    },
+    {
+      "id": "tartu",
+      "name": "Tartu",
+      "lat": 58.3780,
+      "lon": 26.7290,
+      "type": "city",
+      "controlling_side": "blue"
+    },
+    {
+      "id": "paldiski",
+      "name": "Paldiski Naval Base",
+      "lat": 59.3490,
+      "lon": 24.0470,
+      "type": "base",
+      "controlling_side": "blue"
+    },
+    {
+      "id": "pskov_ab",
+      "name": "Pskov Air Base",
+      "lat": 57.7839,
+      "lon": 28.3956,
+      "type": "airfield",
+      "controlling_side": "red"
+    },
+    {
+      "id": "kingisepp",
+      "name": "Kingisepp",
+      "lat": 59.3724,
+      "lon": 28.6142,
+      "type": "city",
+      "controlling_side": "red"
+    },
+    {
+      "id": "gulf_choke",
+      "name": "Gulf of Finland — Western Approach",
+      "lat": 59.6000,
+      "lon": 24.5000,
+      "type": "maritime",
+      "controlling_side": null
+    },
+    {
+      "id": "gulf_east",
+      "name": "Gulf of Finland — Eastern Approach",
+      "lat": 59.7500,
+      "lon": 27.5000,
+      "type": "maritime",
+      "controlling_side": null
+    }
+  ],
+  "units": [
+    {
+      "id": "blue_f16_1",
+      "name": "Viper Sqn (F-16C)",
+      "side": "blue",
+      "sidc": "SFAPCFF----H---",
+      "lat": 59.4820,
+      "lon": 24.0808,
+      "heading": 90,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "air",
+      "unit_type": "f16c",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "blue_armor_1",
+      "name": "1 Armd Bn (Challenger 2)",
+      "side": "blue",
+      "sidc": "SFGPUCA----H---",
+      "lat": 59.3769,
+      "lon": 28.1500,
+      "heading": 90,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "ground",
+      "unit_type": "challenger2",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "blue_himars_1",
+      "name": "1 HIMARS Bn",
+      "side": "blue",
+      "sidc": "SFGPUCIZ---H---",
+      "lat": 59.4370,
+      "lon": 24.7536,
+      "heading": 0,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "ground",
+      "unit_type": "himars",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "blue_frigate_1",
+      "name": "HNLMS De Ruyter (F803)",
+      "side": "blue",
+      "sidc": "SFSPCLS----H---",
+      "lat": 59.0000,
+      "lon": 22.5000,
+      "heading": 45,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "naval",
+      "unit_type": "frigate_hnlms",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "blue_inf_1",
+      "name": "3 Inf Bn (LT)",
+      "side": "blue",
+      "sidc": "SFGPUCI----H---",
+      "lat": 58.3780,
+      "lon": 26.7290,
+      "heading": 0,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "ground",
+      "unit_type": "infantry_light",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "red_su27_1",
+      "name": "159 IAP (Su-27)",
+      "side": "red",
+      "sidc": "SHAPCFF----H---",
+      "lat": 57.7839,
+      "lon": 28.3956,
+      "heading": 270,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "air",
+      "unit_type": "su27s",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "red_armor_1",
+      "name": "6 Armd Bn (T-80U)",
+      "side": "red",
+      "sidc": "SHGPUCA----H---",
+      "lat": 57.8194,
+      "lon": 28.3319,
+      "heading": 270,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "ground",
+      "unit_type": "t80u",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "red_iskander_1",
+      "name": "26 Bde (Iskander-M)",
+      "side": "red",
+      "sidc": "SHGPUCIZ---H---",
+      "lat": 59.3724,
+      "lon": 28.6142,
+      "heading": 270,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "ground",
+      "unit_type": "iskander_m",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "red_cruiser_1",
+      "name": "Slava CG (Red Fleet)",
+      "side": "red",
+      "sidc": "SHSPCLCC---H---",
+      "lat": 59.7000,
+      "lon": 27.5000,
+      "heading": 180,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "naval",
+      "unit_type": "slava_cg",
+      "mission": null,
+      "waypoints": []
+    },
+    {
+      "id": "red_inf_1",
+      "name": "76 BTG (VDV)",
+      "side": "red",
+      "sidc": "SHGPUCI----H---",
+      "lat": 59.3760,
+      "lon": 28.2115,
+      "heading": 270,
+      "speed": 0,
+      "altitude": 0,
+      "unit_class": "ground",
+      "unit_type": "vdv_btg",
+      "mission": null,
+      "waypoints": []
+    }
+  ]
+}

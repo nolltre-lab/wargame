@@ -1,0 +1,315 @@
+{
+  "_comment": "Unit type library. Values are simplified but grounded in open-source data. sensor_km = detection range, weapon_km = max engagement range, attack_per_tick = damage per 60s tick at full engagement, default_hp = starting health (represents unit/platform survivability, not raw vehicle HP).",
+
+  "f16c": {
+    "display_name": "F-16C Block 50 Fighting Falcon",
+    "unit_class": "air",
+    "sensor_km": 150,
+    "weapon_km": 100,
+    "attack_per_tick": 28,
+    "default_hp": 60,
+    "max_speed_kmh": 800,
+    "valid_targets": ["air", "ground", "naval"],
+    "notes": "AN/APG-68(V)9 radar ~150km vs fighter. AIM-120C AMRAAM BVR up to 105km; AGM-65 Maverick for CAS. Block 50 carries HTS pod for SEAD."
+  },
+
+  "f35a": {
+    "display_name": "F-35A Lightning II",
+    "unit_class": "air",
+    "sensor_km": 200,
+    "weapon_km": 120,
+    "attack_per_tick": 32,
+    "default_hp": 65,
+    "max_speed_kmh": 700,
+    "valid_targets": ["air", "ground", "naval"],
+    "notes": "AN/APG-81 AESA radar, AN/AAQ-37 DAS 360° EO. AIM-120D ~180km, JSM anti-ship. Low observable reduces effective sensor range of adversary."
+  },
+
+  "eurofighter": {
+    "display_name": "Eurofighter Typhoon",
+    "unit_class": "air",
+    "sensor_km": 160,
+    "weapon_km": 100,
+    "attack_per_tick": 30,
+    "default_hp": 62,
+    "max_speed_kmh": 900,
+    "valid_targets": ["air", "ground", "naval"],
+    "notes": "Captor-E AESA radar ~160km. Meteor BVRAAM range-denied ~100km. Highly maneuverable for WVR."
+  },
+
+  "su27s": {
+    "display_name": "Su-27S Flanker-B",
+    "unit_class": "air",
+    "sensor_km": 100,
+    "weapon_km": 80,
+    "attack_per_tick": 25,
+    "default_hp": 55,
+    "max_speed_kmh": 900,
+    "valid_targets": ["air", "ground", "naval"],
+    "notes": "N001 Myech coherent pulse-Doppler radar, ~100km vs fighter. R-77 active-homing AAM ~80km. Strong at WVR with high alpha capability."
+  },
+
+  "su30sm": {
+    "display_name": "Su-30SM Flanker-H",
+    "unit_class": "air",
+    "sensor_km": 120,
+    "weapon_km": 100,
+    "attack_per_tick": 28,
+    "default_hp": 60,
+    "max_speed_kmh": 850,
+    "valid_targets": ["air", "ground", "naval"],
+    "notes": "N011M Bars PESA radar ~120km. Kh-59MK2 for DEAD/SEAD, Kh-35U anti-ship. Thrust-vectoring canards for extreme maneuverability."
+  },
+
+  "su34": {
+    "display_name": "Su-34 Fullback",
+    "unit_class": "air",
+    "sensor_km": 120,
+    "weapon_km": 100,
+    "attack_per_tick": 35,
+    "default_hp": 70,
+    "max_speed_kmh": 700,
+    "valid_targets": ["ground", "naval", "air"],
+    "notes": "Primary strike platform. Sh-141 terrain-following radar, Kh-31P for SEAD. Carries Kh-29T/L PGMs. Built-in rear-warning radar."
+  },
+
+  "challenger2": {
+    "display_name": "Challenger 2 MBT (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 5,
+    "weapon_km": 3,
+    "attack_per_tick": 20,
+    "default_hp": 120,
+    "max_speed_kmh": 30,
+    "valid_targets": ["ground"],
+    "notes": "L30A1 120mm rifled gun, CHARM-3 APFSDS effective ~3km. TOGS-2 thermal imager gives night capability. Represents 56-tank battalion (14 tanks/coy × 4 coys)."
+  },
+
+  "t80u": {
+    "display_name": "T-80U MBT (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 4,
+    "weapon_km": 2,
+    "attack_per_tick": 18,
+    "default_hp": 110,
+    "max_speed_kmh": 35,
+    "valid_targets": ["ground"],
+    "notes": "2A46M-1 125mm smoothbore, 9M119 Svir ATGM through barrel ~5km. Shtora-1 active protection limits ATGM effectiveness. Kontakt-5 ERA. Agava-2 thermal ~3km."
+  },
+
+  "leopard2a6": {
+    "display_name": "Leopard 2A6 MBT (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 5,
+    "weapon_km": 4,
+    "attack_per_tick": 22,
+    "default_hp": 125,
+    "max_speed_kmh": 32,
+    "valid_targets": ["ground"],
+    "notes": "Rh-120/L55 gun fires DM53 APFSDS, ~4km effective. PERI R17A2 commander sight with independent thermal. Add-on CLARA mine protection."
+  },
+
+  "infantry_mech": {
+    "display_name": "Mechanised Infantry Battalion",
+    "unit_class": "ground",
+    "sensor_km": 4,
+    "weapon_km": 3,
+    "attack_per_tick": 15,
+    "default_hp": 100,
+    "max_speed_kmh": 55,
+    "valid_targets": ["ground"],
+    "notes": "~600 troops in IFVs (Bradley/CV90/BMP). Milan/Javelin ATGMs ~3-4km. Organic 120mm mortars. IFV 25-30mm cannon for dismounts."
+  },
+
+  "infantry_light": {
+    "display_name": "Light Infantry Battalion",
+    "unit_class": "ground",
+    "sensor_km": 3,
+    "weapon_km": 1,
+    "attack_per_tick": 10,
+    "default_hp": 90,
+    "max_speed_kmh": 8,
+    "valid_targets": ["ground"],
+    "notes": "~700 troops foot-mobile. Small arms 300m effective. NLAW/AT-4 ~600m. Javelin ~2.5km where available. Limited vs armour without fire support."
+  },
+
+  "vdv_btg": {
+    "display_name": "VDV Airborne BTG",
+    "unit_class": "ground",
+    "sensor_km": 3,
+    "weapon_km": 2,
+    "attack_per_tick": 14,
+    "default_hp": 95,
+    "max_speed_kmh": 60,
+    "valid_targets": ["ground"],
+    "notes": "~700 troops in BMD-4M/BTR-MDM. Kornet ATGM ~5km, 2S9 Nona 120mm mortar SP. Air-droppable. 9K338 Igla-S MANPADS for self-defence vs air."
+  },
+
+  "himars": {
+    "display_name": "M142 HIMARS (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 15,
+    "weapon_km": 70,
+    "attack_per_tick": 38,
+    "default_hp": 70,
+    "max_speed_kmh": 70,
+    "valid_targets": ["ground", "naval"],
+    "notes": "M30A1 GMLRS ~70km GPS/INS guided, CEP <5m. ATACMS block IA ~165km (not modelled separately). 6-round pod, ~50min reload. Can fire on coordinates from external targeting — does not need own sensor contact."
+  },
+
+  "mlrs_m270": {
+    "display_name": "M270 MLRS (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 12,
+    "weapon_km": 70,
+    "attack_per_tick": 42,
+    "default_hp": 75,
+    "max_speed_kmh": 50,
+    "valid_targets": ["ground", "naval"],
+    "notes": "Dual-pod: 12× M30/31 GMLRS or 2× ATACMS. Higher volume than HIMARS."
+  },
+
+  "iskander_m": {
+    "display_name": "9K720 Iskander-M (brigade)",
+    "unit_class": "ground",
+    "sensor_km": 20,
+    "weapon_km": 120,
+    "attack_per_tick": 45,
+    "default_hp": 80,
+    "max_speed_kmh": 70,
+    "valid_targets": ["ground", "naval"],
+    "notes": "9M723-1 quasi-ballistic missile ~500km (treaty-declared 480km). CEP 5-7m with DSMAC terminal. Maneuvering re-entry limits ABM intercept. 9M729 cruise missile variant. Brigade = 12 TELs."
+  },
+
+  "patriot_pac3": {
+    "display_name": "Patriot PAC-3 (battery)",
+    "unit_class": "ground",
+    "sensor_km": 200,
+    "weapon_km": 70,
+    "attack_per_tick": 30,
+    "default_hp": 85,
+    "max_speed_kmh": 0,
+    "valid_targets": ["air"],
+    "notes": "AN/MPQ-65 radar, 180° coverage. PAC-3 MSE hit-to-kill vs TBM, cruise, aircraft. 16 PAC-3 per fire unit. Engages aircraft at ~70km, TBM ~40km. Stationary when emplaced."
+  },
+
+  "s300v4": {
+    "display_name": "S-300V4 (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 300,
+    "weapon_km": 200,
+    "attack_per_tick": 35,
+    "default_hp": 90,
+    "max_speed_kmh": 0,
+    "valid_targets": ["air"],
+    "notes": "9M82MV missile 200km vs aircraft/cruise/TBM. 9S32M radar. Engages multiple targets simultaneously. 6 launchers, 4 missiles each. Stationary when emplaced."
+  },
+
+  "buk_m3": {
+    "display_name": "9K317M Buk-M3 (battery)",
+    "unit_class": "ground",
+    "sensor_km": 120,
+    "weapon_km": 70,
+    "attack_per_tick": 25,
+    "default_hp": 80,
+    "max_speed_kmh": 65,
+    "valid_targets": ["air"],
+    "notes": "9M317M missile ~70km vs aircraft, cruise, some TBM. 9S36 passive phased array. Mobile — can fire while moving at low speed. 6 missiles per TEL."
+  },
+
+  "pantsir_s1": {
+    "display_name": "Pantsir-S1 (battery)",
+    "unit_class": "ground",
+    "sensor_km": 40,
+    "weapon_km": 20,
+    "attack_per_tick": 20,
+    "default_hp": 70,
+    "max_speed_kmh": 65,
+    "valid_targets": ["air"],
+    "notes": "Short-range SHORAD. 57E6 missiles to 20km/15km altitude + twin 30mm autocannon to 4km. Protects SAM batteries from HARM and drones."
+  },
+
+  "nasams": {
+    "display_name": "NASAMS (battery)",
+    "unit_class": "ground",
+    "sensor_km": 120,
+    "weapon_km": 50,
+    "attack_per_tick": 22,
+    "default_hp": 75,
+    "max_speed_kmh": 0,
+    "valid_targets": ["air"],
+    "notes": "Fires AIM-120C/D AMRAAM and AIM-9X. AN/MPQ-64F1 Sentinel radar. Networked — can receive remote fire control data. 12 missiles per fire unit."
+  },
+
+  "frigate_hnlms": {
+    "display_name": "HNLMS De Ruyter F803 (LCF frigate)",
+    "unit_class": "naval",
+    "sensor_km": 100,
+    "weapon_km": 90,
+    "attack_per_tick": 25,
+    "default_hp": 150,
+    "max_speed_kmh": 55,
+    "valid_targets": ["naval", "ground", "air"],
+    "notes": "SMART-L 3D radar D-band 400km vs TBM, 100km vs fighter. Mk41 VLS: SM-2 MR ~90km AAW, ESSM quad-packed. Harpoon Block II anti-ship 280km. 76mm OTO Melara for surface/shore. NH90 helicopter."
+  },
+
+  "destroyer_arleigh": {
+    "display_name": "Arleigh Burke DDG",
+    "unit_class": "naval",
+    "sensor_km": 120,
+    "weapon_km": 100,
+    "attack_per_tick": 30,
+    "default_hp": 160,
+    "max_speed_kmh": 55,
+    "valid_targets": ["naval", "ground", "air"],
+    "notes": "AN/SPY-1D(V) Aegis, ~550km horizon. SM-2 Block IIIB ~167km, SM-6 dual-role ~240km. Tomahawk LACM 1600km (not modelled). Harpoon ASuW ~280km. 5in NGF for shore."
+  },
+
+  "slava_cg": {
+    "display_name": "Slava-class Cruiser (CG)",
+    "unit_class": "naval",
+    "sensor_km": 120,
+    "weapon_km": 100,
+    "attack_per_tick": 35,
+    "default_hp": 200,
+    "max_speed_kmh": 55,
+    "valid_targets": ["naval", "ground", "air"],
+    "notes": "16× P-1000 Vulkan ASM ~700km (saturation attack potential). S-300F Rif-M 48× missiles, range ~90km vs aircraft. MR-800 Top Pair 3D radar. Gun battery 2× AK-130. Heavy cruiser; primary anti-ship role."
+  },
+
+  "submarine_ula": {
+    "display_name": "Ula-class SSK (Norway)",
+    "unit_class": "naval",
+    "sensor_km": 80,
+    "weapon_km": 50,
+    "attack_per_tick": 30,
+    "default_hp": 90,
+    "max_speed_kmh": 35,
+    "valid_targets": ["naval"],
+    "notes": "Type 212 hull, AIP propulsion. DM2A4 heavyweight torpedo ~50km. Very quiet. Passive sonar dominant. Difficult to detect — effective sensor range vs SSK is ~30km for most surface combatants."
+  },
+
+  "a10c": {
+    "display_name": "A-10C Thunderbolt II",
+    "unit_class": "air",
+    "sensor_km": 50,
+    "weapon_km": 20,
+    "attack_per_tick": 35,
+    "default_hp": 65,
+    "max_speed_kmh": 350,
+    "valid_targets": ["ground", "naval"],
+    "notes": "GAU-8 Avenger 30mm rotary ~1.2km effective. AGM-65H Maverick EO/IIR ~22km. Mk82/GBU-12. High survivability vs small arms/cannon. Vulnerable to IR SAMs and radar AAMs — needs SEAD support."
+  },
+
+  "su25": {
+    "display_name": "Su-25SM Frogfoot",
+    "unit_class": "air",
+    "sensor_km": 30,
+    "weapon_km": 15,
+    "attack_per_tick": 30,
+    "default_hp": 58,
+    "max_speed_kmh": 400,
+    "valid_targets": ["ground", "naval"],
+    "notes": "Kh-25ML laser ~10km, S-13 rockets. Heavily armoured cockpit/engine. SPO-15LE RWR. Extremely vulnerable to MANPADS and medium SAMs — operates below cloud cover."
+  }
+}
