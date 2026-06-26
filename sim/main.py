@@ -72,6 +72,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     msg["unit_id"],
                     msg["mission_type"],
                     msg.get("objective_id"),
+                    msg.get("patrol_lat"),
+                    msg.get("patrol_lon"),
                 )
                 await broadcast(sim.get_state())
 

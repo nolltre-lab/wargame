@@ -70,6 +70,7 @@ export function ScenarioBuilder({ onExit }: Props) {
         lat:        u.lat as number,
         lon:        u.lon as number,
         name:       u.name as string,
+        airborne:   (u.airborne as boolean | undefined) ?? (u.unit_class !== 'air'),
       }));
       setPlacedUnits(loaded);
       setObjectives(data.objectives ?? []);
@@ -116,6 +117,7 @@ export function ScenarioBuilder({ onExit }: Props) {
       sidc,
       lat, lon,
       name:       `${info.display_name} (${activeSide === 'blue' ? 'Blue' : 'Red'}) #${count}`,
+      airborne:   info.unit_class === 'air' ? false : true,  // air units default to ground-ready
     };
     setPlacedUnits(prev => [...prev, unit]);
   }, [placingType, placedUnits, activeSide, unitTypes]);
@@ -149,6 +151,7 @@ export function ScenarioBuilder({ onExit }: Props) {
         sidc:       u.sidc,
         lat:        u.lat,
         lon:        u.lon,
+        airborne:   u.airborne,
       })),
     };
     try {
@@ -349,22 +352,51 @@ export function ScenarioBuilder({ onExit }: Props) {
                 <span style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {unitTypes[u.unit_type]?.display_name ?? u.unit_type}
                 </span>
+                {u.unit_class === 'air' && (
+                  <span style={{ fontSize: 9, color: u.airborne ? '#4488ff' : '#ddaa22', letterSpacing: 0 }}>
+                    {u.airborne ? '✈' : '⬛'}
+                  </span>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Delete selected */}
-          {selectedId && (
-            <div style={{ padding: '6px 12px', borderTop: '1px solid #1e2e4a' }}>
-              <button onClick={deleteSelected} style={{
-                width: '100%', padding: '5px', background: '#1a0505',
-                border: '1px solid #cc2222', color: '#cc4444',
-                ...MONO, fontSize: 11, cursor: 'pointer', letterSpacing: 1,
-              }}>
-                ✕  DELETE SELECTED
-              </button>
-            </div>
-          )}
+          {/* Selected unit actions */}
+          {selectedId && (() => {
+            const sel = placedUnits.find(u => u.id === selectedId);
+            return (
+              <div style={{ padding: '6px 12px', borderTop: '1px solid #1e2e4a', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {sel?.unit_class === 'air' && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {([false, true] as const).map(val => (
+                      <button
+                        key={String(val)}
+                        onClick={() => setPlacedUnits(prev => prev.map(u =>
+                          u.id === selectedId ? { ...u, airborne: val } : u
+                        ))}
+                        style={{
+                          flex: 1, padding: '4px',
+                          background: sel.airborne === val ? (val ? '#001a3a' : '#1a1000') : 'transparent',
+                          border: `1px solid ${sel.airborne === val ? (val ? '#4488ff' : '#ddaa22') : '#1e2e4a'}`,
+                          color: sel.airborne === val ? (val ? '#4488ff' : '#ddaa22') : '#4a6a8a',
+                          ...MONO, fontSize: 10, cursor: 'pointer', letterSpacing: 1,
+                        }}
+                      >
+                        {val ? '✈ AIRBORNE' : '⬛ GROUND'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={deleteSelected} style={{
+                  width: '100%', padding: '5px', background: '#1a0505',
+                  border: '1px solid #cc2222', color: '#cc4444',
+                  ...MONO, fontSize: 11, cursor: 'pointer', letterSpacing: 1,
+                }}>
+                  ✕  DELETE SELECTED
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Load scenario */}
           <div style={sectionHead}>LOAD SCENARIO</div>

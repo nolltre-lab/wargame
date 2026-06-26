@@ -129,7 +129,14 @@ class SimulationEngine:
             unit.heading = hdg
             unit.lat, unit.lon = destination(unit.lat, unit.lon, hdg, dist_this_tick)
 
-    def assign_mission(self, unit_id: str, mission_type: str, objective_id: str | None) -> bool:
+    def assign_mission(
+        self,
+        unit_id: str,
+        mission_type: str,
+        objective_id: str | None,
+        patrol_lat: float | None = None,
+        patrol_lon: float | None = None,
+    ) -> bool:
         unit = self.units.get(unit_id)
         if unit is None or unit.destroyed:
             return False
@@ -138,6 +145,8 @@ class SimulationEngine:
         unit.mission = Mission(
             type=MissionType(mission_type),
             objective_id=objective_id,
+            patrol_lat=patrol_lat,
+            patrol_lon=patrol_lon,
             status=MissionStatus.EN_ROUTE,
         )
         return True

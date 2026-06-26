@@ -1,12 +1,14 @@
 export type Side = 'blue' | 'red';
 export type UnitClass = 'air' | 'ground' | 'naval';
-export type MissionType = 'secure' | 'defend' | 'patrol' | 'intercept';
+export type MissionType = 'secure' | 'defend' | 'patrol' | 'area_patrol' | 'intercept';
 export type MissionStatus = 'en_route' | 'on_station';
 export type ObjectiveType = 'airfield' | 'port' | 'city' | 'bridge' | 'maritime' | 'base';
 
 export interface Mission {
   type: MissionType;
   objective_id: string | null;
+  patrol_lat: number | null;
+  patrol_lon: number | null;
   status: MissionStatus;
 }
 
@@ -26,6 +28,7 @@ export interface Unit {
   hp: number;
   max_hp: number;
   destroyed: boolean;
+  airborne: boolean;
   sensor_km: number;
   weapon_km: number;
   valid_targets: UnitClass[];
@@ -69,7 +72,7 @@ export interface SimState {
 }
 
 export type WsOutMessage =
-  | { type: 'assign_mission'; unit_id: string; mission_type: MissionType; objective_id?: string }
+  | { type: 'assign_mission'; unit_id: string; mission_type: MissionType; objective_id?: string; patrol_lat?: number; patrol_lon?: number }
   | { type: 'clear_mission'; unit_id: string };
 
 export interface RingToggles {
@@ -105,4 +108,5 @@ export interface BuilderUnit {
   lat: number;
   lon: number;
   name: string;
+  airborne: boolean;
 }

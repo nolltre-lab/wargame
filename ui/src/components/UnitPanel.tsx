@@ -7,7 +7,8 @@ const SIDE_COLOR = { blue: '#4488ff', red: '#ff4444' };
 const MISSION_LABELS: Record<MissionType, string> = {
   secure: 'SECURE',
   defend: 'DEFEND',
-  patrol: 'PATROL',
+  patrol: 'PATROL (objective)',
+  area_patrol: 'PATROL (area)',
   intercept: 'INTERCEPT',
 };
 
@@ -37,15 +38,19 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
     catch { return iso; }
   };
 
+  const needsObjective = missionType !== 'intercept' && missionType !== 'area_patrol';
+
   const assignMission = () => {
     if (!unit || unit.destroyed) return;
-    const needsObjective = missionType !== 'intercept';
     if (needsObjective && !objectiveId) return;
     onSend({
       type: 'assign_mission',
       unit_id: unit.id,
       mission_type: missionType,
       objective_id: needsObjective ? objectiveId : undefined,
+      // For area patrol, patrol around the unit's current position
+      patrol_lat: missionType === 'area_patrol' ? unit.lat : undefined,
+      patrol_lon: missionType === 'area_patrol' ? unit.lon : undefined,
     });
   };
 
@@ -141,6 +146,11 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                     {' → '}{getObjective(unit.mission.objective_id)?.name ?? unit.mission.objective_id}
                   </span>
                 )}
+                {unit.mission.type === 'area_patrol' && unit.mission.patrol_lat != null && (
+                  <div style={{ fontSize: 10, color: '#6a8aaa', marginTop: 2 }}>
+                    {unit.mission.patrol_lat.toFixed(3)}° {unit.mission.patrol_lon?.toFixed(3)}°
+                  </div>
+                )}
               </div>
               <div style={{ color: unit.mission.status === 'on_station' ? '#44dd77' : '#ddaa44', marginTop: 2 }}>
                 {STATUS_LABELS[unit.mission.status]}
@@ -166,7 +176,7 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                 ))}
               </select>
 
-              {missionType !== 'intercept' && (
+              {needsObjective && (
                 <select
                   value={objectiveId}
                   onChange={(e) => setObjectiveId(e.target.value)}
@@ -179,10 +189,16 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                 </select>
               )}
 
+              {missionType === 'area_patrol' && unit && (
+                <div style={{ fontSize: 10, color: '#4a6a8a', marginTop: 4 }}>
+                  center: {unit.lat.toFixed(3)}° {unit.lon.toFixed(3)}°
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button
                   onClick={assignMission}
-                  disabled={missionType !== 'intercept' && !objectiveId}
+                  disabled={needsObjective && !objectiveId}
                   style={btnStyle('#003318', '#22cc66')}
                 >
                   ▶ ASSIGN

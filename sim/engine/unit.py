@@ -18,6 +18,7 @@ class MissionType(str, Enum):
     SECURE = "secure"
     DEFEND = "defend"
     PATROL = "patrol"
+    AREA_PATROL = "area_patrol"
     INTERCEPT = "intercept"
 
 
@@ -29,6 +30,8 @@ class MissionStatus(str, Enum):
 class Mission(BaseModel):
     type: MissionType
     objective_id: Optional[str] = None
+    patrol_lat: Optional[float] = None   # area_patrol center (no objective needed)
+    patrol_lon: Optional[float] = None
     status: MissionStatus = MissionStatus.EN_ROUTE
 
 
@@ -48,5 +51,6 @@ class Unit(BaseModel):
     hp: float = 100.0
     max_hp: float = 100.0
     destroyed: bool = False
+    airborne: bool = True   # air units only: False = on ground, won't auto-orbit
     mission: Optional[Mission] = None
     waypoints: List[Tuple[float, float]] = Field(default_factory=list)

@@ -11,12 +11,15 @@ ON_STATION_RADIUS_KM: Dict[str, float] = {
     UnitClass.NAVAL: 5.0,
 }
 
-# Radius of the patrol circuit around an objective center
+# Radius of the patrol circuit around an objective or area patrol center
 PATROL_RADIUS_KM: Dict[str, float] = {
     UnitClass.AIR: 40.0,
     UnitClass.GROUND: 6.0,
     UnitClass.NAVAL: 25.0,
 }
+
+# Tight holding orbit for airborne units with no active mission
+HOLDING_RADIUS_KM = 10.0
 
 PATROL_POINTS = 4
 
@@ -74,6 +77,12 @@ def resolve_missions(
             continue
         m = unit.mission
         if m is None:
+            # Airborne air units with no mission fly a tight holding orbit
+            if (unit.unit_class == UnitClass.AIR
+                    and unit.airborne
+                    and not unit.waypoints):
+                unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
+                unit.speed = unit.max_speed
             continue
 
         if m.type in (MissionType.SECURE, MissionType.DEFEND):
@@ -101,6 +110,15 @@ def resolve_missions(
             if not unit.waypoints:
                 # Regenerates circuit each time — creates continuous looping patrol
                 unit.waypoints = _patrol_circuit(obj.lat, obj.lon, radius)
+                unit.speed = unit.max_speed
+                m.status = MissionStatus.ON_STATION
+
+        elif m.type == MissionType.AREA_PATROL:
+            if m.patrol_lat is None or m.patrol_lon is None:
+                continue  # mission not fully specified
+            radius = PATROL_RADIUS_KM[unit.unit_class.value]
+            if not unit.waypoints:
+                unit.waypoints = _patrol_circuit(m.patrol_lat, m.patrol_lon, radius)
                 unit.speed = unit.max_speed
                 m.status = MissionStatus.ON_STATION
 

@@ -72,20 +72,21 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 - [x] `./start.sh` one-shot launcher with stale-process cleanup
 - [x] Baltic flashpoint scenario (10 units, 9 objectives, NATO vs Russia/Estonia)
 - [x] Git repo initialised
-
-**Known gaps / carry-forward:**
-- [ ] Naval terrain masking — ships can still route across land when chasing naval targets
-- [ ] Objective capture logic — no side flips ownership yet when a unit holds an objective
+- [x] Naval terrain masking — Gulf of Finland corridor waypoint; route_clips_land check
+- [x] Objective capture — controlling side flips when ground unit holds objective uncontested; capture event in log
+- [x] Scenario builder — place units on map per coalition, save/load/play
+- [x] Theater base maps — Baltic Sea template (29 objectives); `/theaters` endpoints; map flies to theater on select
 
 ---
 
-### Phase 2 — Autonomous Commander AI ⬜
+### Phase 2 — Autonomous Commander AI 🔄
 
+- [ ] **Air unit initial state** — `airborne` field on Unit; ground units wait for tasking; airborne units auto-fly a holding orbit when no mission active; builder toggle per unit
+- [ ] **Area patrol (non-targeted)** — `area_patrol` mission type with embedded `patrol_lat/lon`; no objective link; for CAP, naval patrol lanes, ASW sweeps; UnitPanel supports it
 - [ ] Side-level goals in scenario JSON (`"goals": [{"type": "hold", "objective": "amari_ab"}]`)
 - [ ] Commander AI per side: re-evaluates every N ticks and assigns/reassigns unit missions
 - [ ] Player interface: assign goals to a side, not missions to individual units
 - [ ] Reactive rules: fighters scramble when enemy air detected within sensor range
-- [ ] Objective capture: controlling side flips when a ground unit holds it uncontested
 - [ ] Basic threat priority: commander weighs which objectives are under pressure
 
 ---
