@@ -90,6 +90,12 @@ export interface UnitTypeInfo {
   notes?: string;
 }
 
+export interface TheaterInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface BuilderUnit {
   id: string;
   side: Side;

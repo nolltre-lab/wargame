@@ -1,0 +1,46 @@
+{
+  "id": "baltic_sea",
+  "name": "Baltic Sea",
+  "description": "NATO eastern flank — Estonia, Latvia, Lithuania, Poland, Finland, Sweden vs Russian Western Military District and Kaliningrad exclave",
+  "center": [22.0, 58.0],
+  "zoom": 5,
+  "maritime_corridors": [[60.3, 22.0]],
+  "objectives": [
+    { "id": "amari_ab",        "name": "Ämari Air Base",         "lat": 59.4820, "lon": 24.2083, "type": "airfield", "controlling_side": null },
+    { "id": "tallinn",         "name": "Tallinn",                "lat": 59.4369, "lon": 24.7536, "type": "city",     "controlling_side": null },
+    { "id": "tallinn_port",    "name": "Tallinn Port",           "lat": 59.4444, "lon": 24.7519, "type": "port",     "controlling_side": null },
+    { "id": "narva",           "name": "Narva",                  "lat": 59.3769, "lon": 28.1795, "type": "city",     "controlling_side": null },
+
+    { "id": "riga",            "name": "Riga",                   "lat": 56.9460, "lon": 24.1059, "type": "city",     "controlling_side": null },
+    { "id": "riga_airport",    "name": "Riga International Airport", "lat": 56.9236, "lon": 23.9711, "type": "airfield", "controlling_side": null },
+    { "id": "liepaja_port",    "name": "Liepāja Naval Port",     "lat": 56.5104, "lon": 21.0129, "type": "port",     "controlling_side": null },
+    { "id": "ventspils",       "name": "Ventspils Port",         "lat": 57.3902, "lon": 21.5640, "type": "port",     "controlling_side": null },
+
+    { "id": "siauliai_ab",     "name": "Šiauliai Air Base",      "lat": 55.8939, "lon": 23.3953, "type": "airfield", "controlling_side": null },
+    { "id": "vilnius",         "name": "Vilnius",                "lat": 54.6872, "lon": 25.2797, "type": "city",     "controlling_side": null },
+    { "id": "kaunas",          "name": "Kaunas",                 "lat": 54.8985, "lon": 23.8832, "type": "city",     "controlling_side": null },
+    { "id": "klaipeda",        "name": "Klaipėda Port",          "lat": 55.7033, "lon": 21.1442, "type": "port",     "controlling_side": null },
+
+    { "id": "malbork_ab",      "name": "Malbork Air Base",       "lat": 54.0256, "lon": 19.1347, "type": "airfield", "controlling_side": null },
+    { "id": "gdansk",          "name": "Gdańsk",                 "lat": 54.3520, "lon": 18.6466, "type": "city",     "controlling_side": null },
+    { "id": "gdynia_naval",    "name": "Gdynia Naval Base",      "lat": 54.5262, "lon": 18.5528, "type": "base",     "controlling_side": null },
+
+    { "id": "helsinki",        "name": "Helsinki",               "lat": 60.1699, "lon": 24.9384, "type": "city",     "controlling_side": null },
+    { "id": "helsinki_airport","name": "Helsinki-Vantaa Airport","lat": 60.3172, "lon": 24.9633, "type": "airfield", "controlling_side": null },
+    { "id": "turku",           "name": "Turku",                  "lat": 60.4518, "lon": 22.2666, "type": "port",     "controlling_side": null },
+
+    { "id": "stockholm",       "name": "Stockholm",              "lat": 59.3293, "lon": 18.0686, "type": "city",     "controlling_side": null },
+    { "id": "gotland",         "name": "Gotland (Visby)",        "lat": 57.6389, "lon": 18.2947, "type": "base",     "controlling_side": null },
+    { "id": "karlskrona",      "name": "Karlskrona Naval Base",  "lat": 56.1612, "lon": 15.5869, "type": "base",     "controlling_side": null },
+
+    { "id": "kaliningrad",     "name": "Kaliningrad",            "lat": 54.7104, "lon": 20.5100, "type": "city",     "controlling_side": null },
+    { "id": "baltiysk",        "name": "Baltiysk Naval Base",    "lat": 54.6521, "lon": 19.9000, "type": "base",     "controlling_side": null },
+    { "id": "st_petersburg",   "name": "St. Petersburg",         "lat": 59.9343, "lon": 30.3351, "type": "city",     "controlling_side": null },
+    { "id": "kronstadt",       "name": "Kronstadt Naval Base",   "lat": 59.9948, "lon": 29.7570, "type": "base",     "controlling_side": null },
+
+    { "id": "gulf_of_finland", "name": "Gulf of Finland",        "lat": 60.0000, "lon": 26.0000, "type": "maritime", "controlling_side": null },
+    { "id": "baltic_central",  "name": "Baltic Sea Central",     "lat": 57.5000, "lon": 19.0000, "type": "maritime", "controlling_side": null },
+    { "id": "kaliningrad_sea", "name": "Kaliningrad Sea Approach","lat": 55.0000, "lon": 20.0000, "type": "maritime", "controlling_side": null },
+    { "id": "danish_straits",  "name": "Danish Straits",         "lat": 55.8000, "lon": 12.5000, "type": "maritime", "controlling_side": null }
+  ]
+}

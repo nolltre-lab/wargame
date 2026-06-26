@@ -16,6 +16,8 @@ const OBJ_ICON: Record<string, string> = {
   airfield: '✈', port: '⚓', city: '■', bridge: '═', maritime: '◆', base: '★',
 };
 
+interface FlyTo { center: [number, number]; zoom: number; }
+
 interface Props {
   units: BuilderUnit[];
   objectives: Objective[];
@@ -23,9 +25,10 @@ interface Props {
   isPlacing: boolean;         // true = crosshair cursor, clicks place a unit
   onMapClick: (lat: number, lon: number) => void;
   onUnitClick: (id: string) => void;
+  flyTo?: FlyTo | null;
 }
 
-export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMapClick, onUnitClick }: Props) {
+export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMapClick, onUnitClick, flyTo }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef<Set<string>>(new Set());
@@ -103,6 +106,12 @@ export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMap
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── flyTo ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapReady || !flyTo) return;
+    mapRef.current?.flyTo({ center: flyTo.center, zoom: flyTo.zoom, duration: 1500 });
+  }, [mapReady, flyTo]);
 
   // Keep isPlacing in a ref so the stale closure in map event handlers can read it
   const isPlacingRef = useRef(isPlacing);

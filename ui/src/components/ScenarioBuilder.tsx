@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BuilderMap } from './BuilderMap';
-import type { BuilderUnit, UnitTypeInfo, UnitClass, Objective } from '../types';
+import type { BuilderUnit, UnitTypeInfo, UnitClass, Objective, TheaterInfo } from '../types';
 import { sidcForUnit } from '../lib/milsymbol';
 
 const API = 'http://localhost:8000';
@@ -19,6 +19,7 @@ interface Props {
 
 export function ScenarioBuilder({ onExit }: Props) {
   const [unitTypes, setUnitTypes] = useState<Record<string, UnitTypeInfo>>({});
+  const [theaters, setTheaters] = useState<TheaterInfo[]>([]);
   const [scenarios, setScenarios] = useState<string[]>([]);
   const [classFilter, setClassFilter] = useState<UnitClass | 'all'>('all');
   const [activeSide, setActiveSide] = useState<'blue' | 'red'>('blue');
@@ -26,8 +27,10 @@ export function ScenarioBuilder({ onExit }: Props) {
   const [placedUnits, setPlacedUnits] = useState<BuilderUnit[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [maritimeCorridors, setMaritimeCorridors] = useState<number[][]>([]);
   const [scenarioName, setScenarioName] = useState('my_scenario');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
 
   // ── Escape cancels active placement ──────────────────────────────────────
   useEffect(() => {
@@ -47,6 +50,11 @@ export function ScenarioBuilder({ onExit }: Props) {
       .then(r => r.json())
       .then((list: string[]) => setScenarios(list))
       .catch(console.error);
+
+    fetch(`${API}/theaters`)
+      .then(r => r.json())
+      .then((list: TheaterInfo[]) => setTheaters(list))
+      .catch(console.error);
   }, []);
 
   // ── Load existing scenario ────────────────────────────────────────────────
@@ -65,11 +73,31 @@ export function ScenarioBuilder({ onExit }: Props) {
       }));
       setPlacedUnits(loaded);
       setObjectives(data.objectives ?? []);
+      setMaritimeCorridors(data.maritime_corridors ?? []);
       setScenarioName(filename.replace(/\.json$/, ''));
       setSelectedId(null);
       setPlacingType(null);
     } catch (e) {
       console.error('Failed to load scenario', e);
+    }
+  }, []);
+
+  // ── Load theater base map ────────────────────────────────────────────────
+  const loadTheater = useCallback(async (id: string) => {
+    try {
+      const data = await fetch(`${API}/theaters/${encodeURIComponent(id)}`).then(r => r.json());
+      setObjectives(data.objectives ?? []);
+      setMaritimeCorridors(data.maritime_corridors ?? []);
+      setPlacedUnits([]);
+      setSelectedId(null);
+      setPlacingType(null);
+      setScenarioName(`${id}_scenario`);
+      // Fly the map to the theater center [lon, lat]
+      if (data.center && data.zoom) {
+        setFlyTo({ center: data.center as [number, number], zoom: data.zoom });
+      }
+    } catch (e) {
+      console.error('Failed to load theater', e);
     }
   }, []);
 
@@ -110,6 +138,7 @@ export function ScenarioBuilder({ onExit }: Props) {
       name: scenarioName,
       start_time: '2024-06-15T04:00:00Z',
       tick_duration_seconds: 60,
+      maritime_corridors: maritimeCorridors,
       objectives,
       units: placedUnits.map(u => ({
         id:         u.id,
@@ -138,7 +167,7 @@ export function ScenarioBuilder({ onExit }: Props) {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  }, [scenarioName, placedUnits, objectives]);
+  }, [scenarioName, placedUnits, objectives, maritimeCorridors]);
 
   // ── Load in sim ───────────────────────────────────────────────────────────
   const loadInSim = useCallback(async () => {
@@ -227,6 +256,33 @@ export function ScenarioBuilder({ onExit }: Props) {
 
         {/* ── Sidebar ────────────────────────────────────────────────────── */}
         <div style={sidebarStyle}>
+
+          {/* Base maps / theater picker */}
+          <div style={{ ...sectionHead, marginTop: 0, borderTop: 'none' }}>BASE MAPS</div>
+          <div style={{ padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {theaters.length === 0 && (
+              <div style={{ color: '#3a5a7a', fontSize: 11 }}>Loading…</div>
+            )}
+            {theaters.map(t => (
+              <button
+                key={t.id}
+                onClick={() => loadTheater(t.id)}
+                title={t.description}
+                style={{
+                  background: '#0a1525',
+                  border: '1px solid #1e3a5a',
+                  color: '#4a8ac8',
+                  ...MONO, fontSize: 11,
+                  padding: '5px 10px',
+                  cursor: 'pointer',
+                  letterSpacing: 1,
+                  textAlign: 'left',
+                }}
+              >
+                ◉  {t.name}
+              </button>
+            ))}
+          </div>
 
           {/* Class filter */}
           <div style={{ display: 'flex', gap: 4, padding: '8px 12px' }}>
@@ -372,6 +428,7 @@ export function ScenarioBuilder({ onExit }: Props) {
             isPlacing={!!placingType}
             onMapClick={handleMapClick}
             onUnitClick={handleUnitClick}
+            flyTo={flyTo}
           />
 
           {/* Placement hint overlay */}

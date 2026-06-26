@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from engine.simulation import SimulationEngine
 
 SCENARIOS_DIR = Path(__file__).parent.parent / "scenarios"
+THEATERS_DIR = SCENARIOS_DIR / "theaters"
 DEFAULT_SCENARIO = SCENARIOS_DIR / "baltic_flashpoint.json"
 UNIT_TYPES_FILE = Path(__file__).parent / "data" / "unit_types.json"
 
@@ -155,6 +156,34 @@ async def save_scenario(name: str, data: dict) -> dict:
     with open(SCENARIOS_DIR / safe, "w") as f:
         json.dump(data, f, indent=2)
     return {"saved": safe}
+
+
+# ── Theater template endpoints ────────────────────────────────────────────────
+
+@app.get("/theaters")
+async def list_theaters() -> list:
+    """Return metadata (id, name, description) for all available theater templates."""
+    result = []
+    for p in sorted(THEATERS_DIR.glob("*.json")):
+        with open(p) as f:
+            data = json.load(f)
+        result.append({
+            "id": data.get("id", p.stem),
+            "name": data.get("name", p.stem),
+            "description": data.get("description", ""),
+        })
+    return result
+
+
+@app.get("/theaters/{theater_id}")
+async def get_theater(theater_id: str) -> dict:
+    """Return a full theater template including objectives."""
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", theater_id)
+    path = THEATERS_DIR / f"{safe}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Theater not found")
+    with open(path) as f:
+        return json.load(f)
 
 
 class LoadRequest(BaseModel):
