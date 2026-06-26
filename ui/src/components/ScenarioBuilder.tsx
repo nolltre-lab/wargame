@@ -143,13 +143,19 @@ export function ScenarioBuilder({ onExit }: Props) {
   // ── Load in sim ───────────────────────────────────────────────────────────
   const loadInSim = useCallback(async () => {
     await save();
+    // The filename the save endpoint writes: base name + .json (dots preserved by backend)
     const filename = `${scenarioName.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`;
-    await fetch(`${API}/sim/load`, {
+    const res = await fetch(`${API}/sim/load`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scenario: filename }),
     });
-    onExit();
+    if (res.ok) {
+      onExit();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(`Failed to load scenario: ${err.detail ?? res.status}`);
+    }
   }, [save, scenarioName, onExit]);
 
   // ── Filtered unit type list ───────────────────────────────────────────────

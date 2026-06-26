@@ -44,6 +44,8 @@ class SimulationEngine:
             units[unit.id] = unit
         self.units = units
         self._recent_events = []
+        self.tick_count = 0
+        self.running = False
 
     def tick(self) -> None:
         events = resolve_combat(self.units)

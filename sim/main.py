@@ -148,7 +148,8 @@ async def get_scenario(name: str) -> dict:
 @app.post("/scenarios/{name}")
 async def save_scenario(name: str, data: dict) -> dict:
     """Save a scenario dict to disk. Filename is sanitized."""
-    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", name)
+    # Allow dots so that a name already ending in .json is preserved correctly
+    safe = re.sub(r"[^a-zA-Z0-9_\-.]", "_", name)
     if not safe.endswith(".json"):
         safe += ".json"
     with open(SCENARIOS_DIR / safe, "w") as f:

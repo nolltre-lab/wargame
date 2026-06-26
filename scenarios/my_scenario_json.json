@@ -1,0 +1,58 @@
+{
+  "name": "my_scenario",
+  "start_time": "2024-06-15T04:00:00Z",
+  "tick_duration_seconds": 60,
+  "objectives": [],
+  "units": [
+    {
+      "id": "blue_f35a_1782499955328",
+      "name": "F-35A Lightning II (Blue) #1",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 59.5848861557721,
+      "lon": 20.276245117184857
+    },
+    {
+      "id": "blue_f35a_1782499955785",
+      "name": "F-35A Lightning II (Blue) #2",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 59.27758494034643,
+      "lon": 20.210327148435056
+    },
+    {
+      "id": "red_su30sm_1782499975162",
+      "name": "Su-30SM Flanker-H (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.53479132352746,
+      "lon": 23.84680175781145
+    },
+    {
+      "id": "red_su30sm_1782499975626",
+      "name": "Su-30SM Flanker-H (Red) #2",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.114427573414844,
+      "lon": 23.879760742185567
+    },
+    {
+      "id": "red_su30sm_1782499976045",
+      "name": "Su-30SM Flanker-H (Red) #3",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 58.75728962994128,
+      "lon": 23.791870117185255
+    }
+  ]
+}
