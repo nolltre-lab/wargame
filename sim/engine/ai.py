@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Optional
 from .unit import Unit, MissionType, MissionStatus, UnitClass
 from .objective import Objective
-from .geo import haversine, destination
+from .geo import haversine, destination, naval_waypoints as _naval_wps
 from .combat import weapon_range, valid_targets as unit_valid_targets
 
 # Radius within which a unit is considered "on station" at an objective
@@ -38,7 +38,6 @@ def _nearest_valid_intercept_target(unit: Unit, all_units: Dict[str, Unit]) -> O
     enemy_side = "red" if unit.side.value == "blue" else "blue"
     allowed_classes = unit_valid_targets(unit)
 
-    # Naval units must not chase non-naval targets (no terrain masking yet)
     if unit.unit_class == UnitClass.NAVAL:
         allowed_classes = [c for c in allowed_classes if c == "naval"]
 
@@ -53,7 +52,23 @@ def _nearest_valid_intercept_target(unit: Unit, all_units: Dict[str, Unit]) -> O
     return min(candidates, key=lambda u: haversine(unit.lat, unit.lon, u.lat, u.lon))
 
 
-def resolve_missions(units: Dict[str, Unit], objectives: Dict[str, Objective]) -> None:
+def _route_to(
+    unit: Unit,
+    dest_lat: float,
+    dest_lon: float,
+    corridors: List[Tuple[float, float]],
+) -> List[Tuple[float, float]]:
+    """Return waypoints from the unit's current position to dest, avoiding land for naval units."""
+    if unit.unit_class == UnitClass.NAVAL:
+        return _naval_wps(unit.lat, unit.lon, dest_lat, dest_lon, corridors)
+    return [(dest_lat, dest_lon)]
+
+
+def resolve_missions(
+    units: Dict[str, Unit],
+    objectives: Dict[str, Objective],
+    corridors: List[Tuple[float, float]],
+) -> None:
     for unit in units.values():
         if unit.destroyed:
             continue
@@ -73,7 +88,7 @@ def resolve_missions(units: Dict[str, Unit], objectives: Dict[str, Objective]) -
                 unit.speed = 0.0
                 unit.waypoints = []
             elif not unit.waypoints:
-                unit.waypoints = [(obj.lat, obj.lon)]
+                unit.waypoints = _route_to(unit, obj.lat, obj.lon, corridors)
                 unit.speed = unit.max_speed
                 m.status = MissionStatus.EN_ROUTE
 
@@ -102,6 +117,6 @@ def resolve_missions(units: Dict[str, Unit], objectives: Dict[str, Objective]) -
                 unit.speed = 0.0
                 m.status = MissionStatus.ON_STATION
             else:
-                unit.waypoints = [(target.lat, target.lon)]
+                unit.waypoints = _route_to(unit, target.lat, target.lon, corridors)
                 unit.speed = unit.max_speed
                 m.status = MissionStatus.EN_ROUTE

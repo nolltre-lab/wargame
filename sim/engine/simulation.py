@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .unit import Unit, Mission, MissionType, MissionStatus
 from .objective import Objective
-from .geo import haversine, bearing, destination
+from .geo import haversine, bearing, destination, BALTIC_NAVAL_CORRIDORS
 from .ai import resolve_missions
 from .combat import resolve_combat, default_hp, sensor_range, weapon_range, valid_targets as unit_vtargets
 
@@ -20,12 +20,15 @@ class SimulationEngine:
         self.running: bool = False
         self.tick_count: int = 0
         self._recent_events: List[dict] = []
+        self.maritime_corridors: List[tuple] = list(BALTIC_NAVAL_CORRIDORS)
 
     def load_scenario(self, path: str) -> None:
         data = json.loads(Path(path).read_text())
         self.sim_time = datetime.fromisoformat(data["start_time"].replace("Z", "+00:00"))
         self.tick_duration = float(data.get("tick_duration_seconds", 60.0))
         self.objectives = {o["id"]: Objective(**o) for o in data.get("objectives", [])}
+        raw_corridors = data.get("maritime_corridors", [])
+        self.maritime_corridors = [tuple(c) for c in raw_corridors] if raw_corridors else list(BALTIC_NAVAL_CORRIDORS)
 
         units: Dict[str, Unit] = {}
         for u in data["units"]:
@@ -54,7 +57,9 @@ class SimulationEngine:
                 e["tick"] = self.tick_count
         self._recent_events = events
 
-        resolve_missions(self.units, self.objectives)
+        resolve_missions(self.units, self.objectives, self.maritime_corridors)
+        capture_events = self._resolve_objective_control()
+        self._recent_events.extend(capture_events)
 
         for unit in self.units.values():
             if not unit.destroyed and unit.waypoints and unit.speed > 0:
@@ -62,6 +67,52 @@ class SimulationEngine:
 
         self.sim_time += timedelta(seconds=self.tick_duration)
         self.tick_count += 1
+
+    def _resolve_objective_control(self) -> List[dict]:
+        """Flip objective controlling_side when a side holds it uncontested."""
+        from .unit import UnitClass
+
+        CAPTURE_RADIUS_KM = 5.0
+        events: List[dict] = []
+
+        for obj in self.objectives.values():
+            if obj.type.value == "maritime":
+                continue  # maritime objectives are not captured by ground forces
+
+            blue_present = any(
+                u for u in self.units.values()
+                if not u.destroyed
+                and u.side.value == "blue"
+                and u.unit_class == UnitClass.GROUND
+                and haversine(u.lat, u.lon, obj.lat, obj.lon) <= CAPTURE_RADIUS_KM
+            )
+            red_present = any(
+                u for u in self.units.values()
+                if not u.destroyed
+                and u.side.value == "red"
+                and u.unit_class == UnitClass.GROUND
+                and haversine(u.lat, u.lon, obj.lat, obj.lon) <= CAPTURE_RADIUS_KM
+            )
+
+            new_side: str | None
+            if blue_present and not red_present:
+                new_side = "blue"
+            elif red_present and not blue_present:
+                new_side = "red"
+            else:
+                continue  # contested or nobody present — no change
+
+            if new_side != obj.controlling_side:
+                obj.controlling_side = new_side
+                events.append({
+                    "type": "captured",
+                    "objective_id": obj.id,
+                    "objective_name": obj.name,
+                    "side": new_side,
+                    "tick": self.tick_count,
+                })
+
+        return events
 
     def _advance_unit(self, unit: Unit) -> None:
         if not unit.waypoints:

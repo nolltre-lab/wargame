@@ -43,7 +43,7 @@ export interface Objective {
 }
 
 export interface CombatEvent {
-  type: 'engagement' | 'destroyed';
+  type: 'engagement' | 'destroyed' | 'captured';
   attacker_id?: string;
   attacker_name?: string;
   target_id?: string;
@@ -53,6 +53,8 @@ export interface CombatEvent {
   target_max_hp?: number;
   unit_id?: string;
   unit_name?: string;
+  objective_id?: string;
+  objective_name?: string;
   side?: Side;
   tick?: number;
 }

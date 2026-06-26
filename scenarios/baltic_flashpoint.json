@@ -3,6 +3,7 @@
   "description": "NATO forward posture vs Russian Western Military District. Assign missions to units and observe autonomous execution.",
   "start_time": "2024-06-15T04:00:00Z",
   "tick_duration_seconds": 60,
+  "maritime_corridors": [[60.3, 22.0]],
   "objectives": [
     {
       "id": "amari_ab",

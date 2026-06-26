@@ -311,7 +311,13 @@ export function MapView({ rings }: MapViewProps) {
       if (!seen.has(id)) { m.remove(); objMarkersRef.current.delete(id); }
     });
     objectives.forEach(obj => {
-      if (objMarkersRef.current.has(obj.id)) return;
+      const existing = objMarkersRef.current.get(obj.id);
+      if (existing) {
+        // Update colour when controlling_side changes
+        existing.getElement().style.color =
+          obj.controlling_side ? SIDE_COLOR[obj.controlling_side] : '#999';
+        return;
+      }
       const m = new maplibregl.Marker({ element: createObjEl(obj), anchor: 'center' })
         .setLngLat([obj.lon, obj.lat])
         .addTo(map);

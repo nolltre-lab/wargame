@@ -21,6 +21,14 @@ function formatEvent(e: CombatEvent): { text: string; color: string } {
       color: '#88aacc',
     };
   }
+  if (e.type === 'captured') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `◆ ${e.objective_name} CAPTURED by ${side.toUpperCase()} (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
   return { text: JSON.stringify(e), color: '#666' };
 }
 
