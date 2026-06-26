@@ -89,6 +89,7 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 - [ ] Reactive rules: fighters scramble when enemy air detected within sensor range
 - [ ] Basic threat priority: commander weighs which objectives are under pressure
 - [ ] Dispersed basing — aircraft capable of operating from roads/unprepared strips (Su-34, A-10) can be placed freely; requires `dispersed_basing: true` in unit_types.json
+- [ ] Multi-unit selection — select several units at once and assign them a shared goal; units coordinate to accomplish it as a group
 
 ---
 

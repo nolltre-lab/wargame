@@ -145,10 +145,28 @@ export function ScenarioBuilder({ onExit }: Props) {
     setPlacedUnits(prev => [...prev, unit]);
   }, [placingType, placedUnits, activeSide, unitTypes, objectives]);
 
-  // ── Select a placed unit (click in sidebar = delete) ─────────────────────
+  // ── Select a placed unit ─────────────────────────────────────────────────
   const handleUnitClick = useCallback((id: string) => {
     setSelectedId(prev => (prev === id ? null : id));
   }, []);
+
+  // ── Move a placed unit (drag on map) ──────────────────────────────────────
+  const handleUnitMove = useCallback((id: string, lat: number, lon: number) => {
+    setPlacedUnits(prev => prev.map(u => {
+      if (u.id !== id) return u;
+      // Ground-based air units must stay at an airfield — snap to nearest
+      if (u.unit_class === 'air' && !u.airborne) {
+        const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
+        if (airfields.length > 0) {
+          const nearest = airfields.reduce((best, o) =>
+            Math.hypot(o.lat - lat, o.lon - lon) < Math.hypot(best.lat - lat, best.lon - lon) ? o : best
+          );
+          return { ...u, lat: nearest.lat, lon: nearest.lon };
+        }
+      }
+      return { ...u, lat, lon };
+    }));
+  }, [objectives]);
 
   const deleteSelected = useCallback(() => {
     if (!selectedId) return;
@@ -501,6 +519,7 @@ export function ScenarioBuilder({ onExit }: Props) {
             isPlacing={!!placingType}
             onMapClick={handleMapClick}
             onUnitClick={handleUnitClick}
+            onUnitMove={handleUnitMove}
             flyTo={flyTo}
           />
 

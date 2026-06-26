@@ -22,25 +22,56 @@ interface Props {
   units: BuilderUnit[];
   objectives: Objective[];
   selectedUnitId: string | null;
-  isPlacing: boolean;         // true = crosshair cursor, clicks place a unit
+  isPlacing: boolean;
   onMapClick: (lat: number, lon: number) => void;
   onUnitClick: (id: string) => void;
+  onUnitMove: (id: string, lat: number, lon: number) => void;
   flyTo?: FlyTo | null;
 }
 
-export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMapClick, onUnitClick, flyTo }: Props) {
+function unitFC(units: BuilderUnit[], overrideId?: string, overrideLat?: number, overrideLon?: number): MapData {
+  return md({
+    type: 'FeatureCollection',
+    features: units.map(u => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: u.id === overrideId
+          ? [overrideLon!, overrideLat!]
+          : [u.lon, u.lat],
+      },
+      properties: { id: u.id, icon_id: `ms-${u.sidc}` },
+    })),
+  });
+}
+
+export function BuilderMap({
+  units, objectives, selectedUnitId, isPlacing,
+  onMapClick, onUnitClick, onUnitMove, flyTo,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef<Set<string>>(new Set());
   const objMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
-  const clickedUnitRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
 
-  // Keep callback refs so map event handlers never go stale
+  // Stale-closure refs — updated on every render
   const onMapClickRef = useRef(onMapClick);
   const onUnitClickRef = useRef(onUnitClick);
+  const onUnitMoveRef = useRef(onUnitMove);
+  const isPlacingRef = useRef(isPlacing);
+  const unitsRef = useRef(units);
+  const selectedUnitIdRef = useRef(selectedUnitId);
   onMapClickRef.current = onMapClick;
   onUnitClickRef.current = onUnitClick;
+  onUnitMoveRef.current = onUnitMove;
+  unitsRef.current = units;
+  selectedUnitIdRef.current = selectedUnitId;
+
+  // Drag state
+  const draggingRef = useRef<{ id: string; hasMoved: boolean } | null>(null);
+  const clickedUnitRef = useRef(false);
+  const wasDragRef = useRef(false);
 
   // ── Map init ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -59,14 +90,12 @@ export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMap
         map.addSource(id, { type: 'geojson', data: md(emptyFC()) });
       const lay = (spec: maplibregl.LayerSpecification) => map.addLayer(spec);
 
-      // Selection highlight
       src('sel');
       lay({ id: 'sel-ring', type: 'circle', source: 'sel',
         paint: { 'circle-radius': 28, 'circle-color': 'transparent',
           'circle-stroke-color': '#00ffff', 'circle-stroke-width': 2,
           'circle-stroke-opacity': 0.85 } });
 
-      // Unit icons
       src('units');
       lay({ id: 'unit-symbols', type: 'symbol', source: 'units',
         layout: {
@@ -78,9 +107,58 @@ export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMap
         },
       } as maplibregl.LayerSpecification);
 
-      // Click: unit layer first, then map
+      // ── Drag handlers ────────────────────────────────────────────────────
+      map.on('mousedown', 'unit-symbols', (e) => {
+        if (isPlacingRef.current) return;
+        e.preventDefault();
+        const id = e.features?.[0]?.properties?.id as string | undefined;
+        if (!id) return;
+        draggingRef.current = { id, hasMoved: false };
+        map.dragPan.disable();
+        map.getCanvas().style.cursor = 'grabbing';
+        clickedUnitRef.current = true;
+      });
+
+      map.on('mousemove', (e) => {
+        const drag = draggingRef.current;
+        if (!drag) return;
+        drag.hasMoved = true;
+        const { lat, lng } = e.lngLat;
+
+        // Move the icon immediately (bypass React state for smooth feel)
+        (map.getSource('units') as maplibregl.GeoJSONSource)?.setData(
+          unitFC(unitsRef.current, drag.id, lat, lng)
+        );
+
+        // Keep selection ring tracking during drag
+        if (selectedUnitIdRef.current === drag.id) {
+          (map.getSource('sel') as maplibregl.GeoJSONSource)?.setData(md({
+            type: 'FeatureCollection',
+            features: [{ type: 'Feature',
+              geometry: { type: 'Point', coordinates: [lng, lat] },
+              properties: {} }],
+          }));
+        }
+      });
+
+      const endDrag = (lat: number, lng: number) => {
+        const drag = draggingRef.current;
+        if (!drag) return;
+        draggingRef.current = null;
+        map.dragPan.enable();
+        map.getCanvas().style.cursor = '';
+        if (drag.hasMoved) {
+          wasDragRef.current = true;
+          onUnitMoveRef.current(drag.id, lat, lng);
+        }
+      };
+
+      map.on('mouseup', (e) => endDrag(e.lngLat.lat, e.lngLat.lng));
+
+      // ── Click handlers ───────────────────────────────────────────────────
       map.on('click', 'unit-symbols', (e) => {
         clickedUnitRef.current = true;
+        if (wasDragRef.current) { wasDragRef.current = false; return; }
         const id = e.features?.[0]?.properties?.id as string | undefined;
         if (id) onUnitClickRef.current(id);
       });
@@ -88,17 +166,30 @@ export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMap
         if (clickedUnitRef.current) { clickedUnitRef.current = false; return; }
         onMapClickRef.current(e.lngLat.lat, e.lngLat.lng);
       });
+
+      // ── Cursor ──────────────────────────────────────────────────────────
       map.on('mouseenter', 'unit-symbols', () => {
-        if (!isPlacingRef.current) map.getCanvas().style.cursor = 'pointer';
+        if (!isPlacingRef.current) map.getCanvas().style.cursor = 'grab';
       });
       map.on('mouseleave', 'unit-symbols', () => {
-        map.getCanvas().style.cursor = isPlacingRef.current ? 'crosshair' : '';
+        if (!draggingRef.current)
+          map.getCanvas().style.cursor = isPlacingRef.current ? 'crosshair' : '';
       });
 
       setMapReady(true);
     });
 
+    // Release drag if mouse leaves the window
+    const cancelDrag = () => {
+      if (!draggingRef.current) return;
+      draggingRef.current = null;
+      const map = mapRef.current;
+      if (map) { map.dragPan.enable(); map.getCanvas().style.cursor = ''; }
+    };
+    window.addEventListener('mouseup', cancelDrag);
+
     return () => {
+      window.removeEventListener('mouseup', cancelDrag);
       objMarkersRef.current.forEach(m => m.remove());
       objMarkersRef.current.clear();
       map.remove();
@@ -113,34 +204,25 @@ export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMap
     mapRef.current?.flyTo({ center: flyTo.center, zoom: flyTo.zoom, duration: 1500 });
   }, [mapReady, flyTo]);
 
-  // Keep isPlacing in a ref so the stale closure in map event handlers can read it
-  const isPlacingRef = useRef(isPlacing);
+  // ── isPlacing cursor ──────────────────────────────────────────────────────
   useEffect(() => {
     isPlacingRef.current = isPlacing;
     const map = mapRef.current;
-    if (map) map.getCanvas().style.cursor = isPlacing ? 'crosshair' : '';
+    if (map && !draggingRef.current)
+      map.getCanvas().style.cursor = isPlacing ? 'crosshair' : '';
   }, [isPlacing]);
 
   // ── Unit icons ────────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    if (!mapReady || !map) return;
+    if (!mapReady || !map || draggingRef.current) return;  // let drag own the source during drag
 
     const dpr = Math.ceil(window.devicePixelRatio || 1);
     const needLoad = [...new Set(units.map(u => u.sidc))].filter(s => !loadedRef.current.has(s));
 
     const push = () => {
       if (!mapRef.current) return;
-      (mapRef.current.getSource('units') as maplibregl.GeoJSONSource)?.setData(
-        md({
-          type: 'FeatureCollection',
-          features: units.map(u => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [u.lon, u.lat] },
-            properties: { id: u.id, icon_id: `ms-${u.sidc}` },
-          })),
-        })
-      );
+      (mapRef.current.getSource('units') as maplibregl.GeoJSONSource)?.setData(unitFC(units));
     };
 
     if (needLoad.length === 0) { push(); return; }
@@ -160,28 +242,24 @@ export function BuilderMap({ units, objectives, selectedUnitId, isPlacing, onMap
     const map = mapRef.current;
     if (!mapReady || !map) return;
     const sel = selectedUnitId ? units.find(u => u.id === selectedUnitId) : null;
-    (map.getSource('sel') as maplibregl.GeoJSONSource)?.setData(
-      md({
-        type: 'FeatureCollection',
-        features: sel ? [{
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [sel.lon, sel.lat] },
-          properties: {},
-        }] : [],
-      })
-    );
+    (map.getSource('sel') as maplibregl.GeoJSONSource)?.setData(md({
+      type: 'FeatureCollection',
+      features: sel ? [{
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [sel.lon, sel.lat] },
+        properties: {},
+      }] : [],
+    }));
   }, [mapReady, units, selectedUnitId]);
 
   // ── Objective markers (read-only) ─────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
-    // Remove stale
     const seen = new Set(objectives.map(o => o.id));
     objMarkersRef.current.forEach((m, id) => {
       if (!seen.has(id)) { m.remove(); objMarkersRef.current.delete(id); }
     });
-    // Add new
     objectives.forEach(obj => {
       if (objMarkersRef.current.has(obj.id)) return;
       const el = document.createElement('div');
