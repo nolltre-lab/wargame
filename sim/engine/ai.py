@@ -1,5 +1,5 @@
 from typing import Dict, List, Tuple, Optional
-from .unit import Unit, MissionType, MissionStatus, UnitClass
+from .unit import Unit, Mission, MissionType, MissionStatus, UnitClass
 from .objective import Objective
 from .geo import haversine, destination, naval_waypoints as _naval_wps
 from .combat import weapon_range, valid_targets as unit_valid_targets, UNIT_TYPE_LIB
@@ -25,6 +25,9 @@ PATROL_POINTS = 4
 
 # Ticks to fully rearm/refuel at home base when not in unit_types.json
 _REARM_TICKS_DEFAULT: Dict[str, int] = {"air": 8, "ground": 5, "naval": 12}
+
+# Fuel level at which air/naval units automatically RTB (enough reserve to reach base)
+BINGO_FUEL_PCT = 25.0
 
 
 def _patrol_circuit(center_lat: float, center_lon: float, radius_km: float) -> List[Tuple[float, float]]:
@@ -70,16 +73,56 @@ def _route_to(
     return [(dest_lat, dest_lon)]
 
 
+def _is_winchester(unit: Unit) -> bool:
+    """True when all magazine categories are depleted (and the unit has a loadout at all)."""
+    return bool(unit.magazines) and all(v == 0 for v in unit.magazines.values())
+
+
+def _should_auto_rtb(unit: Unit) -> Optional[str]:
+    """
+    Return the reason string if the unit should automatically RTB, else None.
+    - Bingo fuel: air/naval units at or below BINGO_FUEL_PCT with fuel still above 0
+    - Winchester: any unit class with a non-empty loadout and all ammo at 0
+    Ground units do not auto-RTB on bingo (fuel model is logistical abstraction).
+    """
+    if unit.unit_class in (UnitClass.AIR, UnitClass.NAVAL):
+        if 0 < unit.fuel_pct <= BINGO_FUEL_PCT:
+            return "bingo"
+    if _is_winchester(unit):
+        return "winchester"
+    return None
+
+
 def resolve_missions(
     units: Dict[str, Unit],
     objectives: Dict[str, Objective],
     corridors: List[Tuple[float, float]],
-) -> None:
+) -> List[dict]:
+    events: List[dict] = []
     for unit in units.values():
         if unit.destroyed:
             continue
         if unit.rearming:
             continue  # being serviced at base — simulation._burn_resources handles tick-down
+
+        # ── Auto-RTB check ────────────────────────────────────────────────────
+        m = unit.mission
+        already_rtb = m is not None and m.type == MissionType.RTB
+        if not already_rtb:
+            reason = _should_auto_rtb(unit)
+            if reason is not None:
+                unit.waypoints = []
+                unit.speed = 0.0
+                unit.mission = Mission(type=MissionType.RTB, status=MissionStatus.EN_ROUTE)
+                m = unit.mission
+                events.append({
+                    "type": "bingo_fuel" if reason == "bingo" else "winchester",
+                    "unit_id": unit.id,
+                    "unit_name": unit.name,
+                    "side": unit.side.value,
+                    "tick": None,  # filled in by SimulationEngine
+                })
+
         m = unit.mission
         if m is None:
             # Airborne air units with no mission fly a tight holding orbit (if they have fuel)
@@ -182,3 +225,5 @@ def resolve_missions(
                 unit.waypoints = _route_to(unit, unit.home_base_lat, unit.home_base_lon, corridors)
                 unit.speed = unit.max_speed
                 m.status = MissionStatus.EN_ROUTE
+
+    return events

@@ -81,7 +81,11 @@ class SimulationEngine:
                 e["tick"] = self.tick_count
         self._recent_events = events + resource_events
 
-        resolve_missions(self.units, self.objectives, self.maritime_corridors)
+        mission_events = resolve_missions(self.units, self.objectives, self.maritime_corridors)
+        for e in mission_events:
+            e["tick"] = self.tick_count
+        self._recent_events.extend(mission_events)
+
         capture_events = self._resolve_objective_control()
         self._recent_events.extend(capture_events)
 

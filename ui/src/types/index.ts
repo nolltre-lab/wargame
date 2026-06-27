@@ -54,7 +54,7 @@ export interface Objective {
 }
 
 export interface CombatEvent {
-  type: 'engagement' | 'destroyed' | 'captured' | 'out_of_ammo' | 'low_fuel' | 'rtb_complete';
+  type: 'engagement' | 'destroyed' | 'captured' | 'out_of_ammo' | 'low_fuel' | 'rtb_complete' | 'bingo_fuel' | 'winchester';
   attacker_id?: string;
   attacker_name?: string;
   target_id?: string;

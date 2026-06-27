@@ -54,6 +54,22 @@ function formatEvent(e: CombatEvent): { text: string; color: string } {
       color,
     };
   }
+  if (e.type === 'bingo_fuel') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `⛽ ${e.unit_name} [${side.toUpperCase()}] BINGO FUEL — RTB (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
+  if (e.type === 'winchester') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `▣ ${e.unit_name} [${side.toUpperCase()}] WINCHESTER — RTB (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
   return { text: JSON.stringify(e), color: '#666' };
 }
 
