@@ -81,13 +81,12 @@ def _is_winchester(unit: Unit) -> bool:
 def _should_auto_rtb(unit: Unit) -> Optional[str]:
     """
     Return the reason string if the unit should automatically RTB, else None.
-    - Bingo fuel: air/naval units at or below BINGO_FUEL_PCT with fuel still above 0
-    - Winchester: any unit class with a non-empty loadout and all ammo at 0
-    Ground units do not auto-RTB on bingo (fuel model is logistical abstraction).
+    Only air and naval units auto-RTB — ground units restock in place on player command.
     """
-    if unit.unit_class in (UnitClass.AIR, UnitClass.NAVAL):
-        if 0 < unit.fuel_pct <= BINGO_FUEL_PCT:
-            return "bingo"
+    if unit.unit_class not in (UnitClass.AIR, UnitClass.NAVAL):
+        return None
+    if 0 < unit.fuel_pct <= BINGO_FUEL_PCT:
+        return "bingo"
     if _is_winchester(unit):
         return "winchester"
     return None
