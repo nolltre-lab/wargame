@@ -104,7 +104,22 @@ def resolve_missions(
         if unit.rearming:
             continue  # being serviced at base — simulation._burn_resources handles tick-down
 
-        # ── Auto-RTB check ────────────────────────────────────────────────────
+        # ── Ground auto-restock (winchester → rearm in place immediately) ───────
+        if unit.unit_class == UnitClass.GROUND and _is_winchester(unit):
+            lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+            rearm_ticks = lib.get("rearm_ticks", _REARM_TICKS_DEFAULT.get("ground", 5))
+            unit.rearming = True
+            unit.rearm_ticks_left = rearm_ticks
+            events.append({
+                "type": "winchester",
+                "unit_id": unit.id,
+                "unit_name": unit.name,
+                "side": unit.side.value,
+                "tick": None,
+            })
+            continue  # _burn_resources handles the tick-down
+
+        # ── Air / naval auto-RTB (bingo fuel or winchester) ───────────────────
         m = unit.mission
         already_rtb = m is not None and m.type == MissionType.RTB
         if not already_rtb:
@@ -119,7 +134,7 @@ def resolve_missions(
                     "unit_id": unit.id,
                     "unit_name": unit.name,
                     "side": unit.side.value,
-                    "tick": None,  # filled in by SimulationEngine
+                    "tick": None,
                 })
 
         m = unit.mission
