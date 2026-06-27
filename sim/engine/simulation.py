@@ -44,13 +44,18 @@ class SimulationEngine:
                 if lib and "max_speed_kmh" in lib:
                     unit.max_speed = lib["max_speed_kmh"]
             # Initialize magazines from loadout preset
-            if unit.loadout and unit.unit_type:
+            # Auto-assign first preset if loadout not set (covers old/incomplete scenarios)
+            if unit.unit_type:
                 lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
-                preset = lib.get("loadout_presets", {}).get(unit.loadout, {})
-                if preset.get("magazines"):
-                    unit.magazines = dict(preset["magazines"])
-                if "weapon_km" in preset:
-                    unit.weapon_km_override = float(preset["weapon_km"])
+                presets = lib.get("loadout_presets", {})
+                if presets and not unit.loadout:
+                    unit.loadout = next(iter(presets))
+                if unit.loadout and unit.loadout in presets:
+                    preset = presets[unit.loadout]
+                    if preset.get("magazines"):
+                        unit.magazines = dict(preset["magazines"])
+                    if "weapon_km" in preset:
+                        unit.weapon_km_override = float(preset["weapon_km"])
 
             # Always start at full fuel, not rearming
             unit.fuel_pct = 100.0
@@ -186,6 +191,10 @@ class SimulationEngine:
 
     def _advance_unit(self, unit: Unit) -> None:
         if not unit.waypoints:
+            return
+        if unit.fuel_pct <= 0.0:
+            unit.speed = 0.0
+            unit.waypoints = []
             return
         wp_lat, wp_lon = unit.waypoints[0]
         dist_to_wp = haversine(unit.lat, unit.lon, wp_lat, wp_lon)

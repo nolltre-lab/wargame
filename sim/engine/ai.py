@@ -82,10 +82,11 @@ def resolve_missions(
             continue  # being serviced at base — simulation._burn_resources handles tick-down
         m = unit.mission
         if m is None:
-            # Airborne air units with no mission fly a tight holding orbit
+            # Airborne air units with no mission fly a tight holding orbit (if they have fuel)
             if (unit.unit_class == UnitClass.AIR
                     and unit.airborne
-                    and not unit.waypoints):
+                    and not unit.waypoints
+                    and unit.fuel_pct > 0.0):
                 unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
                 unit.speed = unit.max_speed
             continue
