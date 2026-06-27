@@ -125,6 +125,7 @@ def resolve_missions(
         if not already_rtb:
             reason = _should_auto_rtb(unit)
             if reason is not None:
+                unit.previous_mission = unit.mission  # saved for restore after rearm
                 unit.waypoints = []
                 unit.speed = 0.0
                 unit.mission = Mission(type=MissionType.RTB, status=MissionStatus.EN_ROUTE)

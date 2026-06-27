@@ -63,4 +63,5 @@ class Unit(BaseModel):
     home_base_lon: Optional[float] = None
     rearming: bool = False
     rearm_ticks_left: int = 0
+    previous_mission: Optional[Mission] = None  # restored after RTB/rearm completes
     weapon_km_override: Optional[float] = None  # set by loadout preset (e.g. ATACMS)

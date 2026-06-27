@@ -130,13 +130,21 @@ class SimulationEngine:
         return events
 
     def _complete_rearm(self, unit: Unit) -> dict:
+        from .unit import UnitClass
         unit.fuel_pct = 100.0
         lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
         preset = lib.get("loadout_presets", {}).get(unit.loadout, {})
         mags = preset.get("magazines", {})
         if mags:
             unit.magazines = dict(mags)
-        unit.mission = None
+
+        # Restore previous mission so the unit resumes without player action.
+        # Ground units never change their mission during rearm, so leave it as-is.
+        if unit.unit_class != UnitClass.GROUND:
+            unit.mission = unit.previous_mission  # None is fine — air enters holding orbit
+            if unit.unit_class == UnitClass.AIR and unit.mission is not None:
+                unit.airborne = True  # take off
+        unit.previous_mission = None
         unit.waypoints = []
         unit.speed = 0.0
         return {
@@ -227,13 +235,18 @@ class SimulationEngine:
         unit.waypoints = []
         unit.speed = 0.0
         unit.rearming = False  # cancel any in-progress rearm if re-tasked
-        unit.mission = Mission(
+        new_mission = Mission(
             type=MissionType(mission_type),
             objective_id=objective_id,
             patrol_lat=patrol_lat,
             patrol_lon=patrol_lon,
             status=MissionStatus.EN_ROUTE,
         )
+        if MissionType(mission_type) == MissionType.RTB:
+            unit.previous_mission = unit.mission  # will be restored after rearm
+        else:
+            unit.previous_mission = None  # explicit new mission clears the saved one
+        unit.mission = new_mission
         # Air units taking off for any non-RTB mission become airborne
         if unit.unit_class == UnitClass.AIR and mission_type != MissionType.RTB:
             unit.airborne = True
