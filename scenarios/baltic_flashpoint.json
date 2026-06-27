@@ -1,14 +1,18 @@
 {
-  "name": "Baltic Flashpoint",
-  "description": "NATO forward posture vs Russian Western Military District. Assign missions to units and observe autonomous execution.",
+  "name": "baltic_flashpoint",
   "start_time": "2024-06-15T04:00:00Z",
   "tick_duration_seconds": 60,
-  "maritime_corridors": [[60.3, 22.0]],
+  "maritime_corridors": [
+    [
+      60.3,
+      22
+    ]
+  ],
   "objectives": [
     {
       "id": "amari_ab",
-      "name": "Ämari Air Base",
-      "lat": 59.4820,
+      "name": "\u00c4mari Air Base",
+      "lat": 59.482,
       "lon": 24.0808,
       "type": "airfield",
       "controlling_side": "blue"
@@ -16,8 +20,8 @@
     {
       "id": "tallinn_port",
       "name": "Tallinn Port",
-      "lat": 59.4430,
-      "lon": 24.7490,
+      "lat": 59.443,
+      "lon": 24.749,
       "type": "port",
       "controlling_side": "blue"
     },
@@ -32,16 +36,16 @@
     {
       "id": "tartu",
       "name": "Tartu",
-      "lat": 58.3780,
-      "lon": 26.7290,
+      "lat": 58.378,
+      "lon": 26.729,
       "type": "city",
       "controlling_side": "blue"
     },
     {
       "id": "paldiski",
       "name": "Paldiski Naval Base",
-      "lat": 59.3490,
-      "lon": 24.0470,
+      "lat": 59.349,
+      "lon": 24.047,
       "type": "base",
       "controlling_side": "blue"
     },
@@ -63,17 +67,17 @@
     },
     {
       "id": "gulf_choke",
-      "name": "Gulf of Finland — Western Approach",
-      "lat": 59.6000,
-      "lon": 24.5000,
+      "name": "Gulf of Finland \u2014 Western Approach",
+      "lat": 59.6,
+      "lon": 24.5,
       "type": "maritime",
       "controlling_side": null
     },
     {
       "id": "gulf_east",
-      "name": "Gulf of Finland — Eastern Approach",
-      "lat": 59.7500,
-      "lon": 27.5000,
+      "name": "Gulf of Finland \u2014 Eastern Approach",
+      "lat": 59.75,
+      "lon": 27.5,
       "type": "maritime",
       "controlling_side": null
     }
@@ -83,153 +87,111 @@
       "id": "blue_f16_1",
       "name": "Viper Sqn (F-16C)",
       "side": "blue",
-      "sidc": "SFAPCFF----H---",
-      "lat": 59.4820,
-      "lon": 24.0808,
-      "heading": 90,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "air",
       "unit_type": "f16c",
-      "airborne": false,
-      "mission": null,
-      "waypoints": []
+      "sidc": "SFAPCFF----H---",
+      "lat": 59.482,
+      "lon": 24.0808,
+      "airborne": false
     },
     {
       "id": "blue_armor_1",
       "name": "1 Armd Bn (Challenger 2)",
       "side": "blue",
-      "sidc": "SFGPUCA----H---",
-      "lat": 59.3769,
-      "lon": 28.1500,
-      "heading": 90,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "ground",
       "unit_type": "challenger2",
-      "mission": null,
-      "waypoints": []
+      "sidc": "SFGPUCA----H---",
+      "lat": 59.3769,
+      "lon": 28.15,
+      "airborne": true
     },
     {
       "id": "blue_himars_1",
       "name": "1 HIMARS Bn",
       "side": "blue",
-      "sidc": "SFGPUCIZ---H---",
-      "lat": 59.4370,
-      "lon": 24.7536,
-      "heading": 0,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "ground",
       "unit_type": "himars",
-      "mission": null,
-      "waypoints": []
+      "sidc": "SFGPUCIZ---H---",
+      "lat": 59.437,
+      "lon": 24.7536,
+      "airborne": true
     },
     {
       "id": "blue_frigate_1",
       "name": "HNLMS De Ruyter (F803)",
       "side": "blue",
-      "sidc": "SFSPCLS----H---",
-      "lat": 59.0000,
-      "lon": 22.5000,
-      "heading": 45,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "naval",
       "unit_type": "frigate_hnlms",
-      "mission": null,
-      "waypoints": []
+      "sidc": "SFSPCLS----H---",
+      "lat": 59,
+      "lon": 22.5,
+      "airborne": true
     },
     {
       "id": "blue_inf_1",
       "name": "3 Inf Bn (LT)",
       "side": "blue",
-      "sidc": "SFGPUCI----H---",
-      "lat": 58.3780,
-      "lon": 26.7290,
-      "heading": 0,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "ground",
       "unit_type": "infantry_light",
-      "mission": null,
-      "waypoints": []
+      "sidc": "SFGPUCI----H---",
+      "lat": 58.378,
+      "lon": 26.729,
+      "airborne": true
     },
     {
       "id": "red_su27_1",
       "name": "159 IAP (Su-27)",
       "side": "red",
+      "unit_class": "air",
+      "unit_type": "su27s",
       "sidc": "SHAPCFF----H---",
       "lat": 57.7839,
       "lon": 28.3956,
-      "heading": 270,
-      "speed": 0,
-      "altitude": 0,
-      "unit_class": "air",
-      "unit_type": "su27s",
-      "airborne": false,
-      "mission": null,
-      "waypoints": []
+      "airborne": false
     },
     {
       "id": "red_armor_1",
       "name": "6 Armd Bn (T-80U)",
       "side": "red",
+      "unit_class": "ground",
+      "unit_type": "t80u",
       "sidc": "SHGPUCA----H---",
       "lat": 57.8194,
       "lon": 28.3319,
-      "heading": 270,
-      "speed": 0,
-      "altitude": 0,
-      "unit_class": "ground",
-      "unit_type": "t80u",
-      "mission": null,
-      "waypoints": []
+      "airborne": true
     },
     {
       "id": "red_iskander_1",
       "name": "26 Bde (Iskander-M)",
       "side": "red",
+      "unit_class": "ground",
+      "unit_type": "iskander_m",
       "sidc": "SHGPUCIZ---H---",
       "lat": 59.3724,
       "lon": 28.6142,
-      "heading": 270,
-      "speed": 0,
-      "altitude": 0,
-      "unit_class": "ground",
-      "unit_type": "iskander_m",
-      "mission": null,
-      "waypoints": []
+      "airborne": true
     },
     {
       "id": "red_cruiser_1",
       "name": "Slava CG (Red Fleet)",
       "side": "red",
-      "sidc": "SHSPCLCC---H---",
-      "lat": 59.7000,
-      "lon": 27.5000,
-      "heading": 180,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "naval",
       "unit_type": "slava_cg",
-      "mission": null,
-      "waypoints": []
+      "sidc": "SHSPCLCC---H---",
+      "lat": 59.7,
+      "lon": 27.5,
+      "airborne": true
     },
     {
       "id": "red_inf_1",
       "name": "76 BTG (VDV)",
       "side": "red",
-      "sidc": "SHGPUCI----H---",
-      "lat": 59.3760,
-      "lon": 28.2115,
-      "heading": 270,
-      "speed": 0,
-      "altitude": 0,
       "unit_class": "ground",
       "unit_type": "vdv_btg",
-      "mission": null,
-      "waypoints": []
+      "sidc": "SHGPUCI----H---",
+      "lat": 59.376,
+      "lon": 28.2115,
+      "airborne": true
     }
   ]
 }
