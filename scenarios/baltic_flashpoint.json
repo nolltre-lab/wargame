@@ -92,7 +92,10 @@
       "sidc": "SFAPCFF----H---",
       "lat": 59.482,
       "lon": 24.0808,
-      "airborne": false
+      "airborne": false,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.482,
+      "home_base_lon": 24.0808
     },
     {
       "id": "blue_armor_1",
@@ -103,7 +106,10 @@
       "sidc": "SFGPUCA----H---",
       "lat": 59.3769,
       "lon": 28.15,
-      "airborne": true
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 59.3769,
+      "home_base_lon": 28.15
     },
     {
       "id": "blue_himars_1",
@@ -114,7 +120,10 @@
       "sidc": "SFGPUCIZ---H---",
       "lat": 59.437,
       "lon": 24.7536,
-      "airborne": true
+      "airborne": true,
+      "loadout": "gmlrs",
+      "home_base_lat": 59.437,
+      "home_base_lon": 24.7536
     },
     {
       "id": "blue_frigate_1",
@@ -125,7 +134,10 @@
       "sidc": "SFSPCLS----H---",
       "lat": 59,
       "lon": 22.5,
-      "airborne": true
+      "airborne": true,
+      "loadout": "aaw_focus",
+      "home_base_lat": 59.349,
+      "home_base_lon": 24.047
     },
     {
       "id": "blue_inf_1",
@@ -136,7 +148,10 @@
       "sidc": "SFGPUCI----H---",
       "lat": 58.378,
       "lon": 26.729,
-      "airborne": true
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 58.378,
+      "home_base_lon": 26.729
     },
     {
       "id": "red_su27_1",
@@ -147,7 +162,10 @@
       "sidc": "SHAPCFF----H---",
       "lat": 57.7839,
       "lon": 28.3956,
-      "airborne": false
+      "airborne": false,
+      "loadout": "aa_focus",
+      "home_base_lat": 57.7839,
+      "home_base_lon": 28.3956
     },
     {
       "id": "red_armor_1",
@@ -158,7 +176,10 @@
       "sidc": "SHGPUCA----H---",
       "lat": 57.8194,
       "lon": 28.3319,
-      "airborne": true
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 57.8194,
+      "home_base_lon": 28.3319
     },
     {
       "id": "red_iskander_1",
@@ -169,7 +190,10 @@
       "sidc": "SHGPUCIZ---H---",
       "lat": 59.3724,
       "lon": 28.6142,
-      "airborne": true
+      "airborne": true,
+      "loadout": "strike",
+      "home_base_lat": 59.3724,
+      "home_base_lon": 28.6142
     },
     {
       "id": "red_cruiser_1",
@@ -180,7 +204,10 @@
       "sidc": "SHSPCLCC---H---",
       "lat": 59.7,
       "lon": 27.5,
-      "airborne": true
+      "airborne": true,
+      "loadout": "anti_ship",
+      "home_base_lat": 59.5,
+      "home_base_lon": 29.8
     },
     {
       "id": "red_inf_1",
@@ -191,7 +218,10 @@
       "sidc": "SHGPUCI----H---",
       "lat": 59.376,
       "lon": 28.2115,
-      "airborne": true
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 59.376,
+      "home_base_lon": 28.2115
     }
   ]
 }

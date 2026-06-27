@@ -1,5 +1,5 @@
 {
-  "_comment": "Unit type library. Values are simplified but grounded in open-source data. sensor_km = detection range, weapon_km = max engagement range, attack_per_tick = damage per 60s tick at full engagement, default_hp = starting health (represents unit/platform survivability, not raw vehicle HP).",
+  "_comment": "Unit type library. Values are simplified but grounded in open-source data. sensor_km = detection range, weapon_km = max engagement range, attack_per_tick = damage per 60s tick at full engagement, default_hp = starting health. fuel_burn_per_tick = % fuel consumed per tick when moving, fuel_idle_per_tick = % when stationary, rearm_ticks = ticks at home base to fully rearm & refuel. loadout_presets define magazine counts per ammo class: aa (anti-air), ag (anti-ground), as (anti-ship).",
 
   "f16c": {
     "display_name": "F-16C Block 50 Fighting Falcon",
@@ -10,6 +10,15 @@
     "default_hp": 60,
     "max_speed_kmh": 800,
     "valid_targets": ["air", "ground", "naval"],
+    "fuel_burn_per_tick": 1.5,
+    "fuel_idle_per_tick": 0.2,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "aa_focus":   { "label": "Air Superiority",       "magazines": { "aa": 8, "ag": 0, "as": 0 } },
+      "strike":     { "label": "Strike Package",        "magazines": { "aa": 2, "ag": 6, "as": 0 } },
+      "anti_ship":  { "label": "Anti-Ship (Harpoon)",   "magazines": { "aa": 2, "ag": 0, "as": 3 }, "weapon_km": 200 },
+      "multi_role": { "label": "Multi-Role",            "magazines": { "aa": 4, "ag": 4, "as": 0 } }
+    },
     "notes": "AN/APG-68(V)9 radar ~150km vs fighter. AIM-120C AMRAAM BVR up to 105km; AGM-65 Maverick for CAS. Block 50 carries HTS pod for SEAD."
   },
 
@@ -22,7 +31,16 @@
     "default_hp": 65,
     "max_speed_kmh": 700,
     "valid_targets": ["air", "ground", "naval"],
-    "notes": "AN/APG-81 AESA radar, AN/AAQ-37 DAS 360° EO. AIM-120D ~180km, JSM anti-ship. Low observable reduces effective sensor range of adversary."
+    "fuel_burn_per_tick": 1.5,
+    "fuel_idle_per_tick": 0.2,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "aa_focus":   { "label": "Air Superiority",      "magazines": { "aa": 10, "ag": 0, "as": 0 } },
+      "strike":     { "label": "Strike Package",       "magazines": { "aa": 2,  "ag": 8, "as": 0 } },
+      "anti_ship":  { "label": "Anti-Ship (JSM)",      "magazines": { "aa": 2,  "ag": 0, "as": 4 }, "weapon_km": 280 },
+      "multi_role": { "label": "Multi-Role",           "magazines": { "aa": 4,  "ag": 4, "as": 0 } }
+    },
+    "notes": "AN/APG-81 AESA radar, AN/AAQ-37 DAS 360 EO. AIM-120D ~180km, JSM anti-ship. Low observable reduces effective sensor range of adversary."
   },
 
   "eurofighter": {
@@ -34,6 +52,14 @@
     "default_hp": 62,
     "max_speed_kmh": 900,
     "valid_targets": ["air", "ground", "naval"],
+    "fuel_burn_per_tick": 1.5,
+    "fuel_idle_per_tick": 0.2,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "aa_focus":   { "label": "Air Superiority (Meteor)",       "magazines": { "aa": 10, "ag": 0, "as": 0 } },
+      "strike":     { "label": "Strike (Brimstone/Paveway)",     "magazines": { "aa": 2,  "ag": 6, "as": 0 } },
+      "multi_role": { "label": "Multi-Role",                     "magazines": { "aa": 6,  "ag": 4, "as": 0 } }
+    },
     "notes": "Captor-E AESA radar ~160km. Meteor BVRAAM range-denied ~100km. Highly maneuverable for WVR."
   },
 
@@ -46,6 +72,13 @@
     "default_hp": 55,
     "max_speed_kmh": 900,
     "valid_targets": ["air", "ground", "naval"],
+    "fuel_burn_per_tick": 1.5,
+    "fuel_idle_per_tick": 0.2,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "aa_focus":   { "label": "Air Superiority (R-77)", "magazines": { "aa": 10, "ag": 0, "as": 0 } },
+      "multi_role": { "label": "Multi-Role",             "magazines": { "aa": 6,  "ag": 2, "as": 0 } }
+    },
     "notes": "N001 Myech coherent pulse-Doppler radar, ~100km vs fighter. R-77 active-homing AAM ~80km. Strong at WVR with high alpha capability."
   },
 
@@ -58,6 +91,15 @@
     "default_hp": 60,
     "max_speed_kmh": 850,
     "valid_targets": ["air", "ground", "naval"],
+    "fuel_burn_per_tick": 1.4,
+    "fuel_idle_per_tick": 0.2,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "aa_focus":   { "label": "Air Superiority",         "magazines": { "aa": 10, "ag": 0, "as": 0 } },
+      "strike":     { "label": "Strike (Kh-29/59)",       "magazines": { "aa": 2,  "ag": 8, "as": 0 } },
+      "anti_ship":  { "label": "Anti-Ship (Kh-35U)",      "magazines": { "aa": 2,  "ag": 0, "as": 4 }, "weapon_km": 250 },
+      "multi_role": { "label": "Multi-Role",              "magazines": { "aa": 4,  "ag": 4, "as": 2 } }
+    },
     "notes": "N011M Bars PESA radar ~120km. Kh-59MK2 for DEAD/SEAD, Kh-35U anti-ship. Thrust-vectoring canards for extreme maneuverability."
   },
 
@@ -70,6 +112,14 @@
     "default_hp": 70,
     "max_speed_kmh": 700,
     "valid_targets": ["ground", "naval", "air"],
+    "fuel_burn_per_tick": 1.2,
+    "fuel_idle_per_tick": 0.2,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "strike":    { "label": "Strike (Kh-29/GBU-equiv)", "magazines": { "aa": 2, "ag": 10, "as": 0 } },
+      "anti_ship": { "label": "Anti-Ship (Kh-31A/35)",    "magazines": { "aa": 2, "ag": 2,  "as": 4 }, "weapon_km": 250 },
+      "sead":      { "label": "SEAD (Kh-31P)",            "magazines": { "aa": 4, "ag": 6,  "as": 0 } }
+    },
     "notes": "Primary strike platform. Sh-141 terrain-following radar, Kh-31P for SEAD. Carries Kh-29T/L PGMs. Built-in rear-warning radar."
   },
 
@@ -82,7 +132,13 @@
     "default_hp": 120,
     "max_speed_kmh": 30,
     "valid_targets": ["ground"],
-    "notes": "L30A1 120mm rifled gun, CHARM-3 APFSDS effective ~3km. TOGS-2 thermal imager gives night capability. Represents 56-tank battalion (14 tanks/coy × 4 coys)."
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 5,
+    "loadout_presets": {
+      "standard": { "label": "CHARM-3 Sabot / HESH", "magazines": { "ag": 30 } }
+    },
+    "notes": "L30A1 120mm rifled gun, CHARM-3 APFSDS effective ~3km. TOGS-2 thermal imager gives night capability. Represents 56-tank battalion (14 tanks/coy x 4 coys)."
   },
 
   "t80u": {
@@ -94,6 +150,12 @@
     "default_hp": 110,
     "max_speed_kmh": 35,
     "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 5,
+    "loadout_presets": {
+      "standard": { "label": "125mm AP / 9M119 ATGM", "magazines": { "ag": 28 } }
+    },
     "notes": "2A46M-1 125mm smoothbore, 9M119 Svir ATGM through barrel ~5km. Shtora-1 active protection limits ATGM effectiveness. Kontakt-5 ERA. Agava-2 thermal ~3km."
   },
 
@@ -106,6 +168,12 @@
     "default_hp": 125,
     "max_speed_kmh": 32,
     "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 5,
+    "loadout_presets": {
+      "standard": { "label": "DM53 APFSDS (120mm L55)", "magazines": { "ag": 32 } }
+    },
     "notes": "Rh-120/L55 gun fires DM53 APFSDS, ~4km effective. PERI R17A2 commander sight with independent thermal. Add-on CLARA mine protection."
   },
 
@@ -118,6 +186,12 @@
     "default_hp": 100,
     "max_speed_kmh": 55,
     "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.08,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 5,
+    "loadout_presets": {
+      "standard": { "label": "ATGM / IFV Cannon / Mortar", "magazines": { "ag": 20 } }
+    },
     "notes": "~600 troops in IFVs (Bradley/CV90/BMP). Milan/Javelin ATGMs ~3-4km. Organic 120mm mortars. IFV 25-30mm cannon for dismounts."
   },
 
@@ -130,6 +204,12 @@
     "default_hp": 90,
     "max_speed_kmh": 8,
     "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.05,
+    "fuel_idle_per_tick": 0.005,
+    "rearm_ticks": 5,
+    "loadout_presets": {
+      "standard": { "label": "Small Arms / NLAW / Javelin", "magazines": { "ag": 15 } }
+    },
     "notes": "~700 troops foot-mobile. Small arms 300m effective. NLAW/AT-4 ~600m. Javelin ~2.5km where available. Limited vs armour without fire support."
   },
 
@@ -142,6 +222,12 @@
     "default_hp": 95,
     "max_speed_kmh": 60,
     "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.08,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 5,
+    "loadout_presets": {
+      "standard": { "label": "Kornet ATGM / Igla-S MANPADS", "magazines": { "ag": 15, "aa": 4 } }
+    },
     "notes": "~700 troops in BMD-4M/BTR-MDM. Kornet ATGM ~5km, 2S9 Nona 120mm mortar SP. Air-droppable. 9K338 Igla-S MANPADS for self-defence vs air."
   },
 
@@ -154,7 +240,14 @@
     "default_hp": 70,
     "max_speed_kmh": 70,
     "valid_targets": ["ground", "naval"],
-    "notes": "M30A1 GMLRS ~70km GPS/INS guided, CEP <5m. ATACMS block IA ~165km (not modelled separately). 6-round pod, ~50min reload. Can fire on coordinates from external targeting — does not need own sensor contact."
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 6,
+    "loadout_presets": {
+      "gmlrs":  { "label": "GMLRS (70 km)",  "magazines": { "ag": 6, "as": 2 } },
+      "atacms": { "label": "ATACMS (165 km)", "magazines": { "ag": 3, "as": 0 }, "weapon_km": 165 }
+    },
+    "notes": "M30A1 GMLRS ~70km GPS/INS guided, CEP <5m. ATACMS block IA ~165km. 6-round pod, ~50min reload. Can fire on coordinates from external targeting."
   },
 
   "mlrs_m270": {
@@ -166,7 +259,14 @@
     "default_hp": 75,
     "max_speed_kmh": 50,
     "valid_targets": ["ground", "naval"],
-    "notes": "Dual-pod: 12× M30/31 GMLRS or 2× ATACMS. Higher volume than HIMARS."
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 6,
+    "loadout_presets": {
+      "gmlrs":  { "label": "GMLRS x12 (70 km)",  "magazines": { "ag": 12, "as": 4 } },
+      "atacms": { "label": "ATACMS x6 (165 km)", "magazines": { "ag": 6,  "as": 0 }, "weapon_km": 165 }
+    },
+    "notes": "Dual-pod: 12x M30/31 GMLRS or 2x ATACMS. Higher volume than HIMARS."
   },
 
   "iskander_m": {
@@ -178,7 +278,14 @@
     "default_hp": 80,
     "max_speed_kmh": 70,
     "valid_targets": ["ground", "naval"],
-    "notes": "9M723-1 quasi-ballistic missile ~500km (treaty-declared 480km). CEP 5-7m with DSMAC terminal. Maneuvering re-entry limits ABM intercept. 9M729 cruise missile variant. Brigade = 12 TELs."
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 10,
+    "loadout_presets": {
+      "strike": { "label": "9M723 Quasi-Ballistic", "magazines": { "ag": 4, "as": 0 } },
+      "cruise": { "label": "9M729 Cruise Variant",  "magazines": { "ag": 6, "as": 0 } }
+    },
+    "notes": "9M723-1 quasi-ballistic missile ~500km. CEP 5-7m with DSMAC terminal. 9M729 cruise missile variant. Brigade = 12 TELs."
   },
 
   "patriot_pac3": {
@@ -190,7 +297,13 @@
     "default_hp": 85,
     "max_speed_kmh": 0,
     "valid_targets": ["air"],
-    "notes": "AN/MPQ-65 radar, 180° coverage. PAC-3 MSE hit-to-kill vs TBM, cruise, aircraft. 16 PAC-3 per fire unit. Engages aircraft at ~70km, TBM ~40km. Stationary when emplaced."
+    "fuel_burn_per_tick": 0.0,
+    "fuel_idle_per_tick": 0.03,
+    "rearm_ticks": 15,
+    "loadout_presets": {
+      "aaw": { "label": "PAC-3 MSE x16", "magazines": { "aa": 16 } }
+    },
+    "notes": "AN/MPQ-65 radar, 180 coverage. PAC-3 MSE hit-to-kill vs TBM, cruise, aircraft. 16 PAC-3 per fire unit. Stationary when emplaced."
   },
 
   "s300v4": {
@@ -202,7 +315,13 @@
     "default_hp": 90,
     "max_speed_kmh": 0,
     "valid_targets": ["air"],
-    "notes": "9M82MV missile 200km vs aircraft/cruise/TBM. 9S32M radar. Engages multiple targets simultaneously. 6 launchers, 4 missiles each. Stationary when emplaced."
+    "fuel_burn_per_tick": 0.0,
+    "fuel_idle_per_tick": 0.03,
+    "rearm_ticks": 20,
+    "loadout_presets": {
+      "aaw": { "label": "9M82MV x24 (200 km)", "magazines": { "aa": 24 } }
+    },
+    "notes": "9M82MV missile 200km vs aircraft/cruise/TBM. 9S32M radar. 6 launchers, 4 missiles each. Stationary when emplaced."
   },
 
   "buk_m3": {
@@ -214,6 +333,12 @@
     "default_hp": 80,
     "max_speed_kmh": 65,
     "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 12,
+    "loadout_presets": {
+      "aaw": { "label": "9M317M x18", "magazines": { "aa": 18 } }
+    },
     "notes": "9M317M missile ~70km vs aircraft, cruise, some TBM. 9S36 passive phased array. Mobile — can fire while moving at low speed. 6 missiles per TEL."
   },
 
@@ -226,7 +351,13 @@
     "default_hp": 70,
     "max_speed_kmh": 65,
     "valid_targets": ["air"],
-    "notes": "Short-range SHORAD. 57E6 missiles to 20km/15km altitude + twin 30mm autocannon to 4km. Protects SAM batteries from HARM and drones."
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "shorad": { "label": "57E6 x12 + 30mm Auto", "magazines": { "aa": 12 } }
+    },
+    "notes": "Short-range SHORAD. 57E6 missiles to 20km + twin 30mm autocannon to 4km. Protects SAM batteries from HARM and drones."
   },
 
   "nasams": {
@@ -238,6 +369,12 @@
     "default_hp": 75,
     "max_speed_kmh": 0,
     "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.0,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 15,
+    "loadout_presets": {
+      "aaw": { "label": "AIM-120 / AIM-9X x12", "magazines": { "aa": 12 } }
+    },
     "notes": "Fires AIM-120C/D AMRAAM and AIM-9X. AN/MPQ-64F1 Sentinel radar. Networked — can receive remote fire control data. 12 missiles per fire unit."
   },
 
@@ -250,7 +387,15 @@
     "default_hp": 150,
     "max_speed_kmh": 55,
     "valid_targets": ["naval", "ground", "air"],
-    "notes": "SMART-L 3D radar D-band 400km vs TBM, 100km vs fighter. Mk41 VLS: SM-2 MR ~90km AAW, ESSM quad-packed. Harpoon Block II anti-ship 280km. 76mm OTO Melara for surface/shore. NH90 helicopter."
+    "fuel_burn_per_tick": 0.2,
+    "fuel_idle_per_tick": 0.05,
+    "rearm_ticks": 12,
+    "loadout_presets": {
+      "aaw_focus":  { "label": "AAW (SM-2 MR)",       "magazines": { "aa": 24, "ag": 4,  "as": 4 } },
+      "strike":     { "label": "Strike",              "magazines": { "aa": 8,  "ag": 12, "as": 4 } },
+      "anti_ship":  { "label": "Anti-Ship (Harpoon)", "magazines": { "aa": 8,  "ag": 4,  "as": 8 } }
+    },
+    "notes": "SMART-L 3D radar D-band 400km vs TBM, 100km vs fighter. Mk41 VLS: SM-2 MR ~90km AAW, ESSM quad-packed. Harpoon Block II anti-ship 280km. NH90 helicopter."
   },
 
   "destroyer_arleigh": {
@@ -262,7 +407,15 @@
     "default_hp": 160,
     "max_speed_kmh": 55,
     "valid_targets": ["naval", "ground", "air"],
-    "notes": "AN/SPY-1D(V) Aegis, ~550km horizon. SM-2 Block IIIB ~167km, SM-6 dual-role ~240km. Tomahawk LACM 1600km (not modelled). Harpoon ASuW ~280km. 5in NGF for shore."
+    "fuel_burn_per_tick": 0.2,
+    "fuel_idle_per_tick": 0.05,
+    "rearm_ticks": 12,
+    "loadout_presets": {
+      "aaw_focus": { "label": "AAW (SM-2/SM-6, 96-cell VLS)", "magazines": { "aa": 32, "ag": 8,  "as": 4  } },
+      "strike":    { "label": "Strike (Tomahawk)",             "magazines": { "aa": 8,  "ag": 20, "as": 4  } },
+      "anti_ship": { "label": "Anti-Ship (Harpoon)",           "magazines": { "aa": 12, "ag": 4,  "as": 12 } }
+    },
+    "notes": "AN/SPY-1D(V) Aegis. SM-2 Block IIIB ~167km, SM-6 dual-role ~240km. Tomahawk LACM 1600km. Harpoon ASuW ~280km. 5in NGF for shore."
   },
 
   "slava_cg": {
@@ -274,7 +427,14 @@
     "default_hp": 200,
     "max_speed_kmh": 55,
     "valid_targets": ["naval", "ground", "air"],
-    "notes": "16× P-1000 Vulkan ASM ~700km (saturation attack potential). S-300F Rif-M 48× missiles, range ~90km vs aircraft. MR-800 Top Pair 3D radar. Gun battery 2× AK-130. Heavy cruiser; primary anti-ship role."
+    "fuel_burn_per_tick": 0.18,
+    "fuel_idle_per_tick": 0.05,
+    "rearm_ticks": 15,
+    "loadout_presets": {
+      "anti_ship": { "label": "P-1000 Vulkan ASM x16",  "magazines": { "aa": 16, "ag": 4, "as": 16 } },
+      "aaw_focus": { "label": "S-300F AAW",              "magazines": { "aa": 32, "ag": 4, "as": 8  } }
+    },
+    "notes": "16x P-1000 Vulkan ASM ~700km. S-300F Rif-M 48x missiles, range ~90km vs aircraft. MR-800 Top Pair 3D radar. Primary anti-ship role."
   },
 
   "submarine_ula": {
@@ -286,7 +446,13 @@
     "default_hp": 90,
     "max_speed_kmh": 35,
     "valid_targets": ["naval"],
-    "notes": "Type 212 hull, AIP propulsion. DM2A4 heavyweight torpedo ~50km. Very quiet. Passive sonar dominant. Difficult to detect — effective sensor range vs SSK is ~30km for most surface combatants."
+    "fuel_burn_per_tick": 0.15,
+    "fuel_idle_per_tick": 0.03,
+    "rearm_ticks": 20,
+    "loadout_presets": {
+      "asuw": { "label": "DM2A4 Torpedoes x8", "magazines": { "as": 8 } }
+    },
+    "notes": "Type 212 hull, AIP propulsion. DM2A4 heavyweight torpedo ~50km. Very quiet. Passive sonar dominant."
   },
 
   "a10c": {
@@ -298,7 +464,14 @@
     "default_hp": 65,
     "max_speed_kmh": 350,
     "valid_targets": ["ground", "naval"],
-    "notes": "GAU-8 Avenger 30mm rotary ~1.2km effective. AGM-65H Maverick EO/IIR ~22km. Mk82/GBU-12. High survivability vs small arms/cannon. Vulnerable to IR SAMs and radar AAMs — needs SEAD support."
+    "fuel_burn_per_tick": 0.8,
+    "fuel_idle_per_tick": 0.15,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "cas_heavy":    { "label": "CAS Heavy (Maverick/Mk82)", "magazines": { "aa": 0, "ag": 10, "as": 0 } },
+      "sead_support": { "label": "SEAD Support",             "magazines": { "aa": 2, "ag": 6,  "as": 0 } }
+    },
+    "notes": "GAU-8 Avenger 30mm rotary ~1.2km effective. AGM-65H Maverick EO/IIR ~22km. High survivability vs small arms. Vulnerable to IR SAMs."
   },
 
   "su25": {
@@ -310,6 +483,13 @@
     "default_hp": 58,
     "max_speed_kmh": 400,
     "valid_targets": ["ground", "naval"],
-    "notes": "Kh-25ML laser ~10km, S-13 rockets. Heavily armoured cockpit/engine. SPO-15LE RWR. Extremely vulnerable to MANPADS and medium SAMs — operates below cloud cover."
+    "fuel_burn_per_tick": 0.9,
+    "fuel_idle_per_tick": 0.15,
+    "rearm_ticks": 8,
+    "loadout_presets": {
+      "cas_heavy":  { "label": "CAS Heavy (Kh-25/S-13)", "magazines": { "aa": 0, "ag": 8, "as": 0 } },
+      "multi_role": { "label": "Multi-Role",             "magazines": { "aa": 2, "ag": 6, "as": 0 } }
+    },
+    "notes": "Kh-25ML laser ~10km, S-13 rockets. Heavily armoured cockpit. Extremely vulnerable to MANPADS and medium SAMs."
   }
 }

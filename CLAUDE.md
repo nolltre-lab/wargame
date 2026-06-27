@@ -83,6 +83,9 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 
 - [x] **Air unit initial state** — `airborne` field on Unit; ground units wait for tasking; airborne units auto-fly a holding orbit when no mission active; builder snaps ground units to nearest airfield/base; builder toggle per unit
 - [x] **Area patrol (non-targeted)** — `area_patrol` mission type with embedded `patrol_lat/lon`; no objective link; for CAP, naval patrol lanes, ASW sweeps; UnitPanel supports it
+- [x] **Magazine depth + loadouts** — per-unit ammo pools (aa/ag/as rounds); loadout presets per type in unit_types.json (e.g. "Air Superiority", "Strike", "Anti-Ship"); builder loadout picker; ammo consumed per engagement tick; `out_of_ammo` events in log; weapon_km_override per preset (ATACMS 165 km, anti-ship missiles)
+- [x] **Fuel model** — `fuel_pct` on all units; per-tick burn rates (moving vs idle) per unit type; `low_fuel` events in log; fuel bar in UnitPanel
+- [x] **RTB / Rearm mission** — `rtb` mission type; air and naval route to home base then rearm+refuel; ground and emplaced SAMs rearm in place; `rearming` state suppresses combat; `rtb_complete` event; RTB button in UnitPanel; air units set `airborne=False` on landing, `True` on new mission takeoff; home_base set per unit in scenario JSON and builder
 - [ ] Side-level goals in scenario JSON (`"goals": [{"type": "hold", "objective": "amari_ab"}]`)
 - [ ] Commander AI per side: re-evaluates every N ticks and assigns/reassigns unit missions
 - [ ] Player interface: assign goals to a side, not missions to individual units

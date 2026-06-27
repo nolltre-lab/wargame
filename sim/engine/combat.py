@@ -44,6 +44,8 @@ def sensor_range(unit: Unit) -> float:
 
 
 def weapon_range(unit: Unit) -> float:
+    if unit.weapon_km_override is not None:
+        return unit.weapon_km_override
     return caps(unit)["weapon_km"]
 
 
@@ -55,14 +57,19 @@ def valid_targets(unit: Unit) -> List[str]:
     return _VALID_TARGETS.get(unit.unit_class.value, [])
 
 
+# Maps target class to the magazine key consumed when engaging it
+_MAG_KEY: Dict[str, str] = {"air": "aa", "ground": "ag", "naval": "as"}
+
+
 def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
     """
     Two-phase combat resolution for one tick:
       1. Collect all (attacker, target, damage) pairs simultaneously.
       2. Apply all damage at once to avoid iteration-order bias.
     Returns a list of event dicts broadcast to clients.
+    Units that are rearming or have no ammo for the target class cannot fire.
     """
-    active = [u for u in units.values() if not u.destroyed]
+    active = [u for u in units.values() if not u.destroyed and not u.rearming]
     enemy_side: Dict[str, str] = {"blue": "red", "red": "blue"}
 
     # Phase 1 — find engagements
@@ -83,11 +90,18 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
             if dist <= w_range:
                 candidates.append((dist, other))
 
-        if candidates:
-            candidates.sort(key=lambda x: x[0])
-            nearest = candidates[0][1]
-            damage = float(caps(attacker)["attack_per_tick"])
-            attacks.append((attacker, nearest, damage))
+        if not candidates:
+            continue
+        candidates.sort(key=lambda x: x[0])
+        nearest = candidates[0][1]
+
+        # Skip if out of ammo for this target class (empty dict = unlimited)
+        mag_key = _MAG_KEY.get(nearest.unit_class.value, "ag")
+        if attacker.magazines and attacker.magazines.get(mag_key, -1) == 0:
+            continue
+
+        damage = float(caps(attacker)["attack_per_tick"])
+        attacks.append((attacker, nearest, damage))
 
     # Phase 2 — apply damage
     events: List[dict] = []
@@ -117,5 +131,20 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
                 "side": target.side.value,
                 "tick": None,  # filled in by SimulationEngine
             })
+
+        # Consume one round of the appropriate magazine
+        mag_key = _MAG_KEY.get(target.unit_class.value, "ag")
+        if attacker.magazines and mag_key in attacker.magazines:
+            before = attacker.magazines[mag_key]
+            attacker.magazines[mag_key] = max(0, before - 1)
+            if before > 0 and attacker.magazines[mag_key] == 0:
+                events.append({
+                    "type": "out_of_ammo",
+                    "unit_id": attacker.id,
+                    "unit_name": attacker.name,
+                    "side": attacker.side.value,
+                    "ammo_type": mag_key,
+                    "tick": None,  # filled in by SimulationEngine
+                })
 
     return events

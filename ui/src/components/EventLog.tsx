@@ -29,6 +29,31 @@ function formatEvent(e: CombatEvent): { text: string; color: string } {
       color,
     };
   }
+  if (e.type === 'out_of_ammo') {
+    const cat = e.ammo_type === 'aa' ? 'A-A' : e.ammo_type === 'ag' ? 'A-G' : e.ammo_type === 'as' ? 'A-S' : (e.ammo_type ?? '?');
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `▣ ${e.unit_name} [${side.toUpperCase()}] OUT OF ${cat} AMMO (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
+  if (e.type === 'low_fuel') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `⚠ ${e.unit_name} [${side.toUpperCase()}] LOW FUEL (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
+  if (e.type === 'rtb_complete') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `↩ ${e.unit_name} [${side.toUpperCase()}] REARMED & REFUELLED (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
   return { text: JSON.stringify(e), color: '#666' };
 }
 

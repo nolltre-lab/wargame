@@ -3,6 +3,19 @@ import { BuilderMap } from './BuilderMap';
 import type { BuilderUnit, UnitTypeInfo, UnitClass, Objective, TheaterInfo } from '../types';
 import { sidcForUnit } from '../lib/milsymbol';
 
+function nearestObjective(lat: number, lon: number, objs: Objective[], types: Objective['type'][]) {
+  const candidates = objs.filter(o => types.includes(o.type));
+  if (candidates.length === 0) return null;
+  return candidates.reduce((best, o) =>
+    Math.hypot(o.lat - lat, o.lon - lon) < Math.hypot(best.lat - lat, best.lon - lon) ? o : best
+  );
+}
+
+function defaultLoadout(info: UnitTypeInfo | undefined): string {
+  if (!info?.loadout_presets) return '';
+  return Object.keys(info.loadout_presets)[0] ?? '';
+}
+
 const API = 'http://localhost:8000';
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -62,15 +75,18 @@ export function ScenarioBuilder({ onExit }: Props) {
     try {
       const data = await fetch(`${API}/scenarios/${encodeURIComponent(filename)}`).then(r => r.json());
       const loaded: BuilderUnit[] = (data.units ?? []).map((u: Record<string, unknown>) => ({
-        id:         u.id as string,
-        side:       u.side as 'blue' | 'red',
-        unit_type:  u.unit_type as string,
-        unit_class: u.unit_class as UnitClass,
-        sidc:       u.sidc as string,
-        lat:        u.lat as number,
-        lon:        u.lon as number,
-        name:       u.name as string,
-        airborne:   (u.airborne as boolean | undefined) ?? (u.unit_class !== 'air'),
+        id:            u.id as string,
+        side:          u.side as 'blue' | 'red',
+        unit_type:     u.unit_type as string,
+        unit_class:    u.unit_class as UnitClass,
+        sidc:          u.sidc as string,
+        lat:           u.lat as number,
+        lon:           u.lon as number,
+        name:          u.name as string,
+        airborne:      (u.airborne as boolean | undefined) ?? (u.unit_class !== 'air'),
+        loadout:       (u.loadout as string | undefined) ?? '',
+        home_base_lat: (u.home_base_lat as number | undefined) ?? null,
+        home_base_lon: (u.home_base_lon as number | undefined) ?? null,
       }));
       setPlacedUnits(loaded);
       setObjectives(data.objectives ?? []);
@@ -131,16 +147,38 @@ export function ScenarioBuilder({ onExit }: Props) {
 
     const count = placedUnits.filter(u => u.unit_type === placingType && u.side === activeSide).length + 1;
     const sidc = sidcForUnit(placingType, activeSide);
+
+    // Determine home base
+    let homeBaseLat: number | null = null;
+    let homeBaseLon: number | null = null;
+    if (isAir) {
+      // Air: home base is the snapped airfield
+      homeBaseLat = placeLat;
+      homeBaseLon = placeLon;
+    } else if (info.unit_class === 'naval') {
+      // Naval: nearest port or base
+      const port = nearestObjective(placeLat, placeLon, objectives, ['port', 'base']);
+      if (port) { homeBaseLat = port.lat; homeBaseLon = port.lon; }
+      else { homeBaseLat = placeLat; homeBaseLon = placeLon; }
+    } else {
+      // Ground: rearms in place
+      homeBaseLat = placeLat;
+      homeBaseLon = placeLon;
+    }
+
     const unit: BuilderUnit = {
-      id:         `${activeSide}_${placingType}_${Date.now()}`,
-      side:       activeSide,
-      unit_type:  placingType,
-      unit_class: info.unit_class,
+      id:            `${activeSide}_${placingType}_${Date.now()}`,
+      side:          activeSide,
+      unit_type:     placingType,
+      unit_class:    info.unit_class,
       sidc,
-      lat: placeLat,
-      lon: placeLon,
-      name:       `${info.display_name} (${activeSide === 'blue' ? 'Blue' : 'Red'}) #${count}`,
-      airborne:   isAir ? false : true,
+      lat:           placeLat,
+      lon:           placeLon,
+      name:          `${info.display_name} (${activeSide === 'blue' ? 'Blue' : 'Red'}) #${count}`,
+      airborne:      isAir ? false : true,
+      loadout:       defaultLoadout(info),
+      home_base_lat: homeBaseLat,
+      home_base_lon: homeBaseLon,
     };
     setPlacedUnits(prev => [...prev, unit]);
   }, [placingType, placedUnits, activeSide, unitTypes, objectives]);
@@ -184,15 +222,18 @@ export function ScenarioBuilder({ onExit }: Props) {
       maritime_corridors: maritimeCorridors,
       objectives,
       units: placedUnits.map(u => ({
-        id:         u.id,
-        name:       u.name,
-        side:       u.side,
-        unit_class: u.unit_class,
-        unit_type:  u.unit_type,
-        sidc:       u.sidc,
-        lat:        u.lat,
-        lon:        u.lon,
-        airborne:   u.airborne,
+        id:            u.id,
+        name:          u.name,
+        side:          u.side,
+        unit_class:    u.unit_class,
+        unit_type:     u.unit_type,
+        sidc:          u.sidc,
+        lat:           u.lat,
+        lon:           u.lon,
+        airborne:      u.airborne,
+        loadout:       u.loadout,
+        home_base_lat: u.home_base_lat,
+        home_base_lon: u.home_base_lon,
       })),
     };
     try {
@@ -405,27 +446,33 @@ export function ScenarioBuilder({ onExit }: Props) {
           {/* Selected unit actions */}
           {selectedId && (() => {
             const sel = placedUnits.find(u => u.id === selectedId);
+            if (!sel) return null;
+            const typeInfo = unitTypes[sel.unit_type];
+            const presets = typeInfo?.loadout_presets ?? {};
+            const presetKeys = Object.keys(presets);
             return (
               <div style={{ padding: '6px 12px', borderTop: '1px solid #1e2e4a', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {sel?.unit_class === 'air' && (
+                {/* Airborne toggle for air units */}
+                {sel.unit_class === 'air' && (
                   <div style={{ display: 'flex', gap: 4 }}>
                     {([false, true] as const).map(val => (
                       <button
                         key={String(val)}
                         onClick={() => {
                           if (val === false) {
-                            // Snapping to ground — find nearest airfield
                             const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
                             if (airfields.length === 0) {
                               alert('No airfields or bases on the map. Add an airfield objective first.');
                               return;
                             }
                             const nearest = airfields.reduce((best, o) => {
-                              const d = Math.hypot(o.lat - (sel?.lat ?? 0), o.lon - (sel?.lon ?? 0));
-                              return d < Math.hypot(best.lat - (sel?.lat ?? 0), best.lon - (sel?.lon ?? 0)) ? o : best;
+                              const d = Math.hypot(o.lat - sel.lat, o.lon - sel.lon);
+                              return d < Math.hypot(best.lat - sel.lat, best.lon - sel.lon) ? o : best;
                             });
                             setPlacedUnits(prev => prev.map(u =>
-                              u.id === selectedId ? { ...u, airborne: false, lat: nearest.lat, lon: nearest.lon } : u
+                              u.id === selectedId
+                                ? { ...u, airborne: false, lat: nearest.lat, lon: nearest.lon, home_base_lat: nearest.lat, home_base_lon: nearest.lon }
+                                : u
                             ));
                           } else {
                             setPlacedUnits(prev => prev.map(u =>
@@ -446,6 +493,42 @@ export function ScenarioBuilder({ onExit }: Props) {
                     ))}
                   </div>
                 )}
+
+                {/* Loadout picker */}
+                {presetKeys.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#4a6a8a', marginBottom: 3, letterSpacing: 1 }}>LOADOUT</div>
+                    <select
+                      value={sel.loadout || presetKeys[0]}
+                      onChange={e => setPlacedUnits(prev => prev.map(u =>
+                        u.id === selectedId ? { ...u, loadout: e.target.value } : u
+                      ))}
+                      style={{
+                        width: '100%', background: '#0a1020', border: '1px solid #1e2e4a',
+                        color: '#88bbee', ...MONO, fontSize: 11, padding: '4px 6px',
+                      }}
+                    >
+                      {presetKeys.map(k => (
+                        <option key={k} value={k}>{presets[k].label}</option>
+                      ))}
+                    </select>
+                    {/* Show magazine summary for selected loadout */}
+                    {(() => {
+                      const preset = presets[sel.loadout || presetKeys[0]];
+                      if (!preset) return null;
+                      const mags = Object.entries(preset.magazines)
+                        .filter(([, v]) => v !== undefined && v !== null)
+                        .map(([k, v]) => `${k.toUpperCase()}:${v}`)
+                        .join('  ');
+                      return (
+                        <div style={{ fontSize: 10, color: '#4a6a8a', marginTop: 2 }}>
+                          {mags}{preset.weapon_km ? `  · ${preset.weapon_km} km` : ''}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 <button onClick={deleteSelected} style={{
                   width: '100%', padding: '5px', background: '#1a0505',
                   border: '1px solid #cc2222', color: '#cc4444',

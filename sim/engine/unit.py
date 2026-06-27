@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional
 from enum import Enum
 
 
@@ -20,6 +20,7 @@ class MissionType(str, Enum):
     PATROL = "patrol"
     AREA_PATROL = "area_patrol"
     INTERCEPT = "intercept"
+    RTB = "rtb"
 
 
 class MissionStatus(str, Enum):
@@ -54,3 +55,12 @@ class Unit(BaseModel):
     airborne: bool = True   # air units only: False = on ground, won't auto-orbit
     mission: Optional[Mission] = None
     waypoints: List[Tuple[float, float]] = Field(default_factory=list)
+    # Loadout & logistics
+    loadout: str = ""
+    magazines: Dict[str, int] = Field(default_factory=dict)  # {"aa": 8, "ag": 4, "as": 0}
+    fuel_pct: float = 100.0
+    home_base_lat: Optional[float] = None
+    home_base_lon: Optional[float] = None
+    rearming: bool = False
+    rearm_ticks_left: int = 0
+    weapon_km_override: Optional[float] = None  # set by loadout preset (e.g. ATACMS)

@@ -5,20 +5,40 @@ import type { MissionType, WsOutMessage } from '../types';
 const SIDE_COLOR = { blue: '#4488ff', red: '#ff4444' };
 
 const MISSION_LABELS: Record<MissionType, string> = {
-  secure: 'SECURE',
-  defend: 'DEFEND',
-  patrol: 'PATROL (objective)',
+  secure:      'SECURE',
+  defend:      'DEFEND',
+  patrol:      'PATROL (objective)',
   area_patrol: 'PATROL (area)',
-  intercept: 'INTERCEPT',
+  intercept:   'INTERCEPT',
+  rtb:         'RTB / REARM',
 };
 
 const STATUS_LABELS = {
-  en_route: 'EN ROUTE',
+  en_route:   'EN ROUTE',
   on_station: 'ON STATION',
 };
 
+const MAG_LABEL: Record<string, string> = { aa: 'A-A', ag: 'A-G', as: 'A-S' };
+
 interface UnitPanelProps {
   onSend: (msg: WsOutMessage) => void;
+}
+
+function Bar({
+  value, max, color, label, suffix = '',
+}: { value: number; max: number; color: string; label: string; suffix?: string }) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4a6a8a', fontSize: 10, marginBottom: 2 }}>
+        <span>{label}</span>
+        <span style={{ color }}>{Math.round(value)}{suffix} / {Math.round(max)}{suffix}</span>
+      </div>
+      <div style={{ background: '#0d1628', border: '1px solid #1e2e4a', height: 5 }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width 0.3s ease' }} />
+      </div>
+    </div>
+  );
 }
 
 export function UnitPanel({ onSend }: UnitPanelProps) {
@@ -38,7 +58,7 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
     catch { return iso; }
   };
 
-  const needsObjective = missionType !== 'intercept' && missionType !== 'area_patrol';
+  const needsObjective = missionType !== 'intercept' && missionType !== 'area_patrol' && missionType !== 'rtb';
 
   const assignMission = () => {
     if (!unit || unit.destroyed) return;
@@ -48,10 +68,14 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
       unit_id: unit.id,
       mission_type: missionType,
       objective_id: needsObjective ? objectiveId : undefined,
-      // For area patrol, patrol around the unit's current position
       patrol_lat: missionType === 'area_patrol' ? unit.lat : undefined,
       patrol_lon: missionType === 'area_patrol' ? unit.lon : undefined,
     });
+  };
+
+  const assignRTB = () => {
+    if (!unit || unit.destroyed) return;
+    onSend({ type: 'assign_mission', unit_id: unit.id, mission_type: 'rtb' });
   };
 
   const clearMission = () => {
@@ -61,6 +85,10 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
 
   const hpPct = unit ? Math.max(0, (unit.hp / unit.max_hp) * 100) : 0;
   const hpColor = hpPct > 60 ? '#22cc66' : hpPct > 30 ? '#ddaa22' : '#cc3322';
+  const fuelPct = unit?.fuel_pct ?? 100;
+  const fuelColor = fuelPct > 50 ? '#22cc66' : fuelPct > 20 ? '#ddaa22' : '#cc3322';
+
+  const magEntries = unit ? Object.entries(unit.magazines ?? {}).filter(([, v]) => v !== undefined) : [];
 
   return (
     <div style={{
@@ -96,22 +124,42 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
             {unit.destroyed && <span style={{ color: '#cc3322', marginLeft: 8 }}>DESTROYED</span>}
           </div>
 
-          {/* HP bar */}
           {!unit.destroyed && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4a6a8a', fontSize: 10, marginBottom: 2 }}>
-                <span>INTEGRITY</span>
-                <span style={{ color: hpColor }}>{Math.round(unit.hp)} / {Math.round(unit.max_hp)}</span>
-              </div>
-              <div style={{ background: '#0d1628', border: '1px solid #1e2e4a', height: 6 }}>
+            <>
+              <Bar value={unit.hp} max={unit.max_hp} color={hpColor} label="INTEGRITY" />
+              <Bar value={fuelPct} max={100} color={fuelColor} label="FUEL" suffix="%" />
+
+              {/* Magazine counts */}
+              {magEntries.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ color: '#4a6a8a', fontSize: 10, marginBottom: 4 }}>MUNITIONS</div>
+                  {magEntries.map(([key, count]) => {
+                    const maxFromStore = unit.magazines[key] !== undefined ? undefined : 0;
+                    void maxFromStore;
+                    const label = MAG_LABEL[key] ?? key.toUpperCase();
+                    const isEmpty = count === 0;
+                    return (
+                      <div key={key} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 11 }}>
+                        <span style={{ color: '#4a6a8a' }}>{label}</span>
+                        <span style={{ color: isEmpty ? '#cc3322' : count < 4 ? '#ddaa22' : '#88bbee' }}>
+                          {isEmpty ? 'EMPTY' : count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Rearming indicator */}
+              {unit.rearming && (
                 <div style={{
-                  width: `${hpPct}%`,
-                  height: '100%',
-                  background: hpColor,
-                  transition: 'width 0.3s ease, background 0.3s ease',
-                }} />
-              </div>
-            </div>
+                  background: '#0d1628', border: '1px solid #2a4a2a',
+                  padding: '5px 8px', marginBottom: 8, fontSize: 11, color: '#22cc66',
+                }}>
+                  ↩ REARMING · {unit.rearm_ticks_left} tick{unit.rearm_ticks_left !== 1 ? 's' : ''} remaining
+                </div>
+              )}
+            </>
           )}
 
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
@@ -132,11 +180,8 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
 
           {unit.mission && !unit.destroyed ? (
             <div style={{
-              background: '#0d1628',
-              border: '1px solid #1e2e4a',
-              padding: '6px 8px',
-              marginBottom: 10,
-              fontSize: 11,
+              background: '#0d1628', border: '1px solid #1e2e4a',
+              padding: '6px 8px', marginBottom: 10, fontSize: 11,
             }}>
               <div style={{ color: '#4a6a8a', marginBottom: 3 }}>CURRENT MISSION</div>
               <div style={{ color: '#88bbee' }}>
@@ -160,7 +205,7 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
             <div style={{ color: '#3a5a7a', marginBottom: 10, fontSize: 11 }}>No active mission</div>
           ) : null}
 
-          {!unit.destroyed && (
+          {!unit.destroyed && !unit.rearming && (
             <div style={{ borderTop: '1px solid #1e2e4a', paddingTop: 8 }}>
               <div style={{ color: '#4a6a8a', marginBottom: 6, fontSize: 10, letterSpacing: 1 }}>
                 ASSIGN MISSION
@@ -171,9 +216,11 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                 onChange={(e) => setMissionType(e.target.value as MissionType)}
                 style={selectStyle}
               >
-                {(Object.keys(MISSION_LABELS) as MissionType[]).map((t) => (
-                  <option key={t} value={t}>{MISSION_LABELS[t]}</option>
-                ))}
+                {(Object.keys(MISSION_LABELS) as MissionType[])
+                  .filter(t => t !== 'rtb')
+                  .map((t) => (
+                    <option key={t} value={t}>{MISSION_LABELS[t]}</option>
+                  ))}
               </select>
 
               {needsObjective && (
@@ -209,6 +256,21 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                   </button>
                 )}
               </div>
+
+              {/* RTB button — only shown when unit has a home base */}
+              {unit.home_base_lat != null && (
+                <button
+                  onClick={assignRTB}
+                  style={{
+                    ...btnStyle('#001020', '#4488aa'),
+                    width: '100%',
+                    marginTop: 6,
+                    letterSpacing: 1,
+                  }}
+                >
+                  ↩ RTB / REARM
+                </button>
+              )}
             </div>
           )}
         </>

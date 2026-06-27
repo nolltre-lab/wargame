@@ -7,7 +7,7 @@ from .unit import Unit, Mission, MissionType, MissionStatus
 from .objective import Objective
 from .geo import haversine, bearing, destination, BALTIC_NAVAL_CORRIDORS
 from .ai import resolve_missions
-from .combat import resolve_combat, default_hp, sensor_range, weapon_range, valid_targets as unit_vtargets
+from .combat import resolve_combat, default_hp, sensor_range, weapon_range, valid_targets as unit_vtargets, UNIT_TYPE_LIB
 
 
 class SimulationEngine:
@@ -40,22 +40,41 @@ class SimulationEngine:
                 unit.max_hp = u.get("max_hp", hp)
             # Set max_speed from library if not explicitly provided
             if "max_speed" not in u and unit.unit_type:
-                from .combat import UNIT_TYPE_LIB
                 lib = UNIT_TYPE_LIB.get(unit.unit_type)
                 if lib and "max_speed_kmh" in lib:
                     unit.max_speed = lib["max_speed_kmh"]
+            # Initialize magazines from loadout preset
+            if unit.loadout and unit.unit_type:
+                lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+                preset = lib.get("loadout_presets", {}).get(unit.loadout, {})
+                if preset.get("magazines"):
+                    unit.magazines = dict(preset["magazines"])
+                if "weapon_km" in preset:
+                    unit.weapon_km_override = float(preset["weapon_km"])
+
+            # Always start at full fuel, not rearming
+            unit.fuel_pct = 100.0
+            unit.rearming = False
+            unit.rearm_ticks_left = 0
+
             units[unit.id] = unit
         self.units = units
         self._recent_events = []
         self.tick_count = 0
         self.running = False
 
+    # Fuel burn defaults (% per tick) when not specified in unit_types.json
+    _FUEL_MOVING = {"air": 1.5, "ground": 0.1, "naval": 0.2}
+    _FUEL_IDLE   = {"air": 0.2, "ground": 0.02, "naval": 0.05}
+    _REARM_TICKS = {"air": 8,   "ground": 5,    "naval": 12}
+
     def tick(self) -> None:
         events = resolve_combat(self.units)
-        for e in events:
-            if e["type"] == "destroyed":
+        resource_events = self._burn_resources()
+        for e in events + resource_events:
+            if e["type"] in ("destroyed", "out_of_ammo", "low_fuel", "rtb_complete"):
                 e["tick"] = self.tick_count
-        self._recent_events = events
+        self._recent_events = events + resource_events
 
         resolve_missions(self.units, self.objectives, self.maritime_corridors)
         capture_events = self._resolve_objective_control()
@@ -67,6 +86,57 @@ class SimulationEngine:
 
         self.sim_time += timedelta(seconds=self.tick_duration)
         self.tick_count += 1
+
+    def _burn_resources(self) -> List[dict]:
+        events: List[dict] = []
+        for unit in self.units.values():
+            if unit.destroyed:
+                continue
+
+            if unit.rearming:
+                unit.rearm_ticks_left = max(0, unit.rearm_ticks_left - 1)
+                if unit.rearm_ticks_left == 0:
+                    unit.rearming = False
+                    events.append(self._complete_rearm(unit))
+                continue  # no fuel burn while being serviced
+
+            lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+            was_above_20 = unit.fuel_pct > 20.0
+            if unit.speed > 0:
+                burn = lib.get("fuel_burn_per_tick",
+                               self._FUEL_MOVING.get(unit.unit_class.value, 0.5))
+            else:
+                burn = lib.get("fuel_idle_per_tick",
+                               self._FUEL_IDLE.get(unit.unit_class.value, 0.1))
+            unit.fuel_pct = max(0.0, unit.fuel_pct - burn)
+
+            if was_above_20 and unit.fuel_pct <= 20.0:
+                events.append({
+                    "type": "low_fuel",
+                    "unit_id": unit.id,
+                    "unit_name": unit.name,
+                    "side": unit.side.value,
+                    "tick": None,
+                })
+        return events
+
+    def _complete_rearm(self, unit: Unit) -> dict:
+        unit.fuel_pct = 100.0
+        lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+        preset = lib.get("loadout_presets", {}).get(unit.loadout, {})
+        mags = preset.get("magazines", {})
+        if mags:
+            unit.magazines = dict(mags)
+        unit.mission = None
+        unit.waypoints = []
+        unit.speed = 0.0
+        return {
+            "type": "rtb_complete",
+            "unit_id": unit.id,
+            "unit_name": unit.name,
+            "side": unit.side.value,
+            "tick": None,
+        }
 
     def _resolve_objective_control(self) -> List[dict]:
         """Flip objective controlling_side when a side holds it uncontested."""
@@ -137,11 +207,13 @@ class SimulationEngine:
         patrol_lat: float | None = None,
         patrol_lon: float | None = None,
     ) -> bool:
+        from .unit import UnitClass
         unit = self.units.get(unit_id)
         if unit is None or unit.destroyed:
             return False
         unit.waypoints = []
         unit.speed = 0.0
+        unit.rearming = False  # cancel any in-progress rearm if re-tasked
         unit.mission = Mission(
             type=MissionType(mission_type),
             objective_id=objective_id,
@@ -149,6 +221,9 @@ class SimulationEngine:
             patrol_lon=patrol_lon,
             status=MissionStatus.EN_ROUTE,
         )
+        # Air units taking off for any non-RTB mission become airborne
+        if unit.unit_class == UnitClass.AIR and mission_type != MissionType.RTB:
+            unit.airborne = True
         return True
 
     def clear_mission(self, unit_id: str) -> bool:

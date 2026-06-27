@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Optional
 from .unit import Unit, MissionType, MissionStatus, UnitClass
 from .objective import Objective
 from .geo import haversine, destination, naval_waypoints as _naval_wps
-from .combat import weapon_range, valid_targets as unit_valid_targets
+from .combat import weapon_range, valid_targets as unit_valid_targets, UNIT_TYPE_LIB
 
 # Radius within which a unit is considered "on station" at an objective
 ON_STATION_RADIUS_KM: Dict[str, float] = {
@@ -22,6 +22,9 @@ PATROL_RADIUS_KM: Dict[str, float] = {
 HOLDING_RADIUS_KM = 10.0
 
 PATROL_POINTS = 4
+
+# Ticks to fully rearm/refuel at home base when not in unit_types.json
+_REARM_TICKS_DEFAULT: Dict[str, int] = {"air": 8, "ground": 5, "naval": 12}
 
 
 def _patrol_circuit(center_lat: float, center_lon: float, radius_km: float) -> List[Tuple[float, float]]:
@@ -75,6 +78,8 @@ def resolve_missions(
     for unit in units.values():
         if unit.destroyed:
             continue
+        if unit.rearming:
+            continue  # being serviced at base — simulation._burn_resources handles tick-down
         m = unit.mission
         if m is None:
             # Airborne air units with no mission fly a tight holding orbit
@@ -136,5 +141,43 @@ def resolve_missions(
                 m.status = MissionStatus.ON_STATION
             else:
                 unit.waypoints = _route_to(unit, target.lat, target.lon, corridors)
+                unit.speed = unit.max_speed
+                m.status = MissionStatus.EN_ROUTE
+
+        elif m.type == MissionType.RTB:
+            lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+            rearm_ticks = lib.get("rearm_ticks",
+                                  _REARM_TICKS_DEFAULT.get(unit.unit_class.value, 8))
+
+            # Ground units and emplaced SAMs (max_speed == 0) rearm in place
+            if unit.unit_class == UnitClass.GROUND or unit.max_speed == 0:
+                m.status = MissionStatus.ON_STATION
+                unit.speed = 0.0
+                unit.waypoints = []
+                unit.rearming = True
+                unit.rearm_ticks_left = rearm_ticks
+                continue
+
+            # Air and naval: fly/sail to home base
+            if unit.home_base_lat is None or unit.home_base_lon is None:
+                # No home base recorded — clear mission and sit still
+                unit.mission = None
+                unit.speed = 0.0
+                unit.waypoints = []
+                continue
+
+            dist = haversine(unit.lat, unit.lon, unit.home_base_lat, unit.home_base_lon)
+            arrive_radius = ON_STATION_RADIUS_KM[unit.unit_class.value] * 2
+
+            if dist <= arrive_radius:
+                m.status = MissionStatus.ON_STATION
+                unit.speed = 0.0
+                unit.waypoints = []
+                if unit.unit_class == UnitClass.AIR:
+                    unit.airborne = False  # landed
+                unit.rearming = True
+                unit.rearm_ticks_left = rearm_ticks
+            else:
+                unit.waypoints = _route_to(unit, unit.home_base_lat, unit.home_base_lon, corridors)
                 unit.speed = unit.max_speed
                 m.status = MissionStatus.EN_ROUTE
