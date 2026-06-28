@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 from .unit import Unit
+from .geo import haversine
 
 _LIB_PATH = Path(__file__).parent.parent / "data" / "unit_types.json"
 
@@ -68,9 +69,29 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
       2. Apply all damage at once to avoid iteration-order bias.
     Returns a list of event dicts broadcast to clients.
     Units that are rearming or have no ammo for the target class cannot fire.
+
+    Networked detection: data-linked units share their sensor picture.
+    Any data-linked unit may engage a target detected by ANY data-linked
+    friendly, as long as the target is within the attacker's own weapon range.
+    Non-data-linked units engage anything within weapon range (no detection gate).
     """
+    from .geo import haversine
     active = [u for u in units.values() if not u.destroyed and not u.rearming]
     enemy_side: Dict[str, str] = {"blue": "red", "red": "blue"}
+
+    # Build per-side network picture: set of enemy unit IDs detectable by
+    # any data-linked friendly unit.
+    network_detected: Dict[str, set] = {"blue": set(), "red": set()}
+    for scanner in active:
+        if not UNIT_TYPE_LIB.get(scanner.unit_type, {}).get("data_link", False):
+            continue
+        s_range = sensor_range(scanner)
+        e_side = enemy_side[scanner.side.value]
+        for target in active:
+            if target.side.value != e_side:
+                continue
+            if haversine(scanner.lat, scanner.lon, target.lat, target.lon) <= s_range:
+                network_detected[scanner.side.value].add(target.id)
 
     # Phase 1 — find engagements
     attacks: List[Tuple[Unit, Unit, float]] = []
@@ -78,6 +99,7 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
         target_classes = valid_targets(attacker)
         w_range = weapon_range(attacker)
         e_side = enemy_side[attacker.side.value]
+        has_data_link = UNIT_TYPE_LIB.get(attacker.unit_type, {}).get("data_link", False)
 
         candidates: List[Tuple[float, Unit]] = []
         for other in active:
@@ -85,8 +107,16 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
                 continue
             if other.unit_class.value not in target_classes:
                 continue
-            from .geo import haversine
             dist = haversine(attacker.lat, attacker.lon, other.lat, other.lon)
+
+            # Detection gate for data-linked units: own sensor OR network picture.
+            # Non-data-linked units fire on anything in weapon range (no detection gate).
+            if has_data_link:
+                in_own_sensor = dist <= sensor_range(attacker)
+                in_network = other.id in network_detected[attacker.side.value]
+                if not (in_own_sensor or in_network):
+                    continue
+
             if dist <= w_range:
                 candidates.append((dist, other))
 

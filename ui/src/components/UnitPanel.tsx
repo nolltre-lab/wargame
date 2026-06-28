@@ -162,6 +162,16 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
             </>
           )}
 
+          {unit.data_link && (
+            <div style={{
+              display: 'inline-block', marginBottom: 8,
+              padding: '2px 6px', fontSize: 9, letterSpacing: 1,
+              border: '1px solid #2255aa', color: '#4488ff', background: '#050d1a',
+            }}>
+              ◈ DATA LINK
+            </div>
+          )}
+
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
             <tbody>
               {([

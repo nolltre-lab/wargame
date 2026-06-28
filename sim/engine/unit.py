@@ -64,4 +64,5 @@ class Unit(BaseModel):
     rearming: bool = False
     rearm_ticks_left: int = 0
     previous_mission: Optional[Mission] = None  # restored after RTB/rearm completes
+    data_link: bool = False                      # set from unit_types.json on load
     weapon_km_override: Optional[float] = None  # set by loadout preset (e.g. ATACMS)

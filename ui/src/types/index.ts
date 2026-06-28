@@ -42,6 +42,7 @@ export interface Unit {
   home_base_lon: number | null;
   rearming: boolean;
   rearm_ticks_left: number;
+  data_link: boolean;
 }
 
 export interface Objective {
@@ -107,6 +108,7 @@ export interface UnitTypeInfo {
   valid_targets: UnitClass[];
   notes?: string;
   rearm_ticks?: number;
+  data_link?: boolean;
   loadout_presets?: Record<string, LoadoutPreset>;
 }
 

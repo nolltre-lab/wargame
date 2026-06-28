@@ -57,6 +57,10 @@ class SimulationEngine:
                     if "weapon_km" in preset:
                         unit.weapon_km_override = float(preset["weapon_km"])
 
+            # Stamp data_link from library (can't be set in scenario JSON)
+            if unit.unit_type:
+                unit.data_link = bool(UNIT_TYPE_LIB.get(unit.unit_type, {}).get("data_link", False))
+
             # Always start at full fuel, not rearming
             unit.fuel_pct = 100.0
             unit.rearming = False
