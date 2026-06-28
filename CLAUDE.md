@@ -93,6 +93,7 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 - [ ] Basic threat priority: commander weighs which objectives are under pressure
 - [ ] Dispersed basing — aircraft capable of operating from roads/unprepared strips (Su-34, A-10) can be placed freely; requires `dispersed_basing: true` in unit_types.json
 - [ ] Multi-unit selection — select several units at once and assign them a shared goal; units coordinate to accomplish it as a group
+- [ ] **Altitude-dependent detection** — current sensor_km values are "maximum bubble" (best-case, optimal-altitude target). Real detection is horizon-limited for surface radars looking at low-flying targets: a ship radar at 30m height can only see a sea-skimming missile at ~25km despite having a 320km bubble for high-altitude aircraft. Model as `sensor_km_hi` (aircraft) vs `sensor_km_lo` (cruise missiles, surface ships) per unit type; unit altitude feeds the correct range. Relevant pairs: ship vs cruise missile (lo), ship vs fighter (hi), ground radar vs MLRS (ballistic arc = hi briefly then lo). This also means a Slava at 250km bubble can't see an F-35 at 60m ingress altitude until ~30km.
 
 ---
 

@@ -26,7 +26,7 @@
   "f35a": {
     "display_name": "F-35A Lightning II",
     "unit_class": "air",
-    "sensor_km": 200,
+    "sensor_km": 180,
     "weapon_km": 120,
     "attack_per_tick": 32,
     "default_hp": 65,
@@ -401,7 +401,7 @@
   "frigate_hnlms": {
     "display_name": "HNLMS De Ruyter F803 (LCF frigate)",
     "unit_class": "naval",
-    "sensor_km": 100,
+    "sensor_km": 250,
     "weapon_km": 90,
     "attack_per_tick": 25,
     "default_hp": 150,
@@ -414,16 +414,16 @@
     "loadout_presets": {
       "aaw_focus":  { "label": "AAW (SM-2 MR)",       "magazines": { "aa": 24, "ag": 4,  "as": 4 } },
       "strike":     { "label": "Strike",              "magazines": { "aa": 8,  "ag": 12, "as": 4 } },
-      "anti_ship":  { "label": "Anti-Ship (Harpoon)", "magazines": { "aa": 8,  "ag": 4,  "as": 8 } }
+      "anti_ship":  { "label": "Anti-Ship (Harpoon)", "magazines": { "aa": 8,  "ag": 4,  "as": 8 }, "weapon_km": 280 }
     },
-    "notes": "SMART-L 3D radar 100km vs fighter. Mk41 VLS: SM-2 MR ~90km AAW. Link-16 / SEWACO — contributes long-range radar picture to the network."
+    "notes": "SMART-L 3D D-band radar ~400km vs TBM, ~250km vs fighter-RCS aircraft. Mk41 VLS: SM-2 MR ~90km AAW, ESSM quad-packed. Harpoon Block II anti-ship 280km. Link-16 / SEWACO."
   },
 
   "destroyer_arleigh": {
     "display_name": "Arleigh Burke DDG",
     "unit_class": "naval",
-    "sensor_km": 120,
-    "weapon_km": 100,
+    "sensor_km": 320,
+    "weapon_km": 167,
     "attack_per_tick": 30,
     "default_hp": 160,
     "max_speed_kmh": 55,
@@ -433,18 +433,18 @@
     "rearm_ticks": 12,
     "data_link": true,
     "loadout_presets": {
-      "aaw_focus": { "label": "AAW (SM-2/SM-6, 96-cell VLS)", "magazines": { "aa": 32, "ag": 8,  "as": 4  } },
-      "strike":    { "label": "Strike (Tomahawk)",             "magazines": { "aa": 8,  "ag": 20, "as": 4  } },
-      "anti_ship": { "label": "Anti-Ship (Harpoon)",           "magazines": { "aa": 12, "ag": 4,  "as": 12 } }
+      "aaw_focus": { "label": "AAW (SM-6 ERAM)",     "magazines": { "aa": 32, "ag": 8,  "as": 4  }, "weapon_km": 370 },
+      "strike":    { "label": "Strike (Tomahawk)",   "magazines": { "aa": 8,  "ag": 20, "as": 4  }, "weapon_km": 1500 },
+      "anti_ship": { "label": "Anti-Ship (Harpoon)", "magazines": { "aa": 12, "ag": 4,  "as": 12 }, "weapon_km": 280 }
     },
-    "notes": "AN/SPY-1D(V) Aegis. SM-6 dual-role ~240km. Link-16 primary network node — highest naval data-link value."
+    "notes": "AN/SPY-1D(V) Aegis phased array ~320km vs fighter-RCS (maximum bubble, altitude effects TBD). SM-2 IIIB 167km base; SM-6 ERAM 370km (aaw_focus); Tomahawk LACM 1500km (strike); Harpoon 280km (anti_ship). Link-16 primary network node."
   },
 
   "slava_cg": {
     "display_name": "Slava-class Cruiser (CG)",
     "unit_class": "naval",
-    "sensor_km": 120,
-    "weapon_km": 100,
+    "sensor_km": 250,
+    "weapon_km": 90,
     "attack_per_tick": 35,
     "default_hp": 200,
     "max_speed_kmh": 55,
@@ -454,10 +454,10 @@
     "rearm_ticks": 15,
     "data_link": false,
     "loadout_presets": {
-      "anti_ship": { "label": "P-1000 Vulkan ASM x16",  "magazines": { "aa": 16, "ag": 4, "as": 16 } },
-      "aaw_focus": { "label": "S-300F AAW",              "magazines": { "aa": 32, "ag": 4, "as": 8  } }
+      "anti_ship": { "label": "P-1000 Vulkan ASM x16", "magazines": { "aa": 16, "ag": 4, "as": 16 }, "weapon_km": 550 },
+      "aaw_focus": { "label": "S-300F Rif-M AAW",      "magazines": { "aa": 32, "ag": 4, "as": 8  }, "weapon_km": 90  }
     },
-    "notes": "16x P-1000 Vulkan ASM ~700km. S-300F Rif-M 48x missiles. MR-800 Top Pair 3D radar. No compatible NATO data link."
+    "notes": "MR-800 Top Pair + MR-600 Voskhod 3D radars ~250km vs aircraft (maximum bubble, altitude effects TBD). 16x P-1000 Vulkan ASM 550km (anti_ship); S-300F Rif-M 90km AAW (aaw_focus). No compatible NATO data link."
   },
 
   "submarine_ula": {
