@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { emptyFC } from '../lib/geo';
+import { emptyFC, circlePolygon, type RingFeature } from '../lib/geo';
 import { loadSidcImage } from '../lib/milsymbol';
-import type { BuilderUnit, Objective } from '../types';
+import type { BuilderUnit, Objective, RingToggles, UnitTypeInfo } from '../types';
 
 const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 const INITIAL_CENTER: [number, number] = [26.5, 58.8];
@@ -11,6 +11,51 @@ const INITIAL_ZOOM = 6;
 
 type MapData = Parameters<maplibregl.GeoJSONSource['setData']>[0];
 const md = (o: unknown) => o as MapData;
+
+// ── Ring helpers (BuilderUnit has no sensor_km — read from unitTypes) ─────────
+
+function builderSensorRings(
+  units: BuilderUnit[], unitTypes: Record<string, UnitTypeInfo>,
+  show: boolean, sel: string | null,
+): MapData {
+  const feats: RingFeature[] = [];
+  for (const u of units) {
+    const sensor_km = unitTypes[u.unit_type]?.sensor_km ?? 0;
+    if (sensor_km <= 0) continue;
+    const isSel = u.id === sel;
+    if (!show && !isSel) continue;
+    const f = circlePolygon(u.lat, u.lon, sensor_km);
+    f.properties = { side: u.side, selected: isSel };
+    feats.push(f);
+  }
+  return md({ type: 'FeatureCollection', features: feats });
+}
+
+function builderWeaponRings(
+  units: BuilderUnit[], unitTypes: Record<string, UnitTypeInfo>,
+  tgt: 'air' | 'surface', show: boolean, sel: string | null,
+): MapData {
+  const feats: RingFeature[] = [];
+  for (const u of units) {
+    const info = unitTypes[u.unit_type];
+    if (!info) continue;
+    const isSel = u.id === sel;
+    if (!show && !isSel) continue;
+    const vtargets: string[] = info.valid_targets ?? [];
+    const can = tgt === 'air'
+      ? vtargets.includes('air')
+      : vtargets.includes('ground') || vtargets.includes('naval');
+    if (!can) continue;
+    // Respect loadout weapon_km override if set
+    const preset = u.loadout ? info.loadout_presets?.[u.loadout] : undefined;
+    const weapon_km = preset?.weapon_km ?? info.weapon_km ?? 0;
+    if (weapon_km <= 0) continue;
+    const f = circlePolygon(u.lat, u.lon, weapon_km);
+    f.properties = { side: u.side, selected: isSel };
+    feats.push(f);
+  }
+  return md({ type: 'FeatureCollection', features: feats });
+}
 
 const OBJ_ICON: Record<string, string> = {
   airfield: '✈', port: '⚓', city: '■', bridge: '═', maritime: '◆', base: '★',
@@ -21,6 +66,8 @@ interface FlyTo { center: [number, number]; zoom: number; }
 interface Props {
   units: BuilderUnit[];
   objectives: Objective[];
+  unitTypes: Record<string, UnitTypeInfo>;
+  rings: RingToggles;
   selectedUnitId: string | null;
   isPlacing: boolean;
   onMapClick: (lat: number, lon: number) => void;
@@ -46,7 +93,7 @@ function unitFC(units: BuilderUnit[], overrideId?: string, overrideLat?: number,
 }
 
 export function BuilderMap({
-  units, objectives, selectedUnitId, isPlacing,
+  units, objectives, unitTypes, rings, selectedUnitId, isPlacing,
   onMapClick, onUnitClick, onUnitMove, flyTo,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,6 +136,32 @@ export function BuilderMap({
       const src = (id: string) =>
         map.addSource(id, { type: 'geojson', data: md(emptyFC()) });
       const lay = (spec: maplibregl.LayerSpecification) => map.addLayer(spec);
+
+      // Sensor rings
+      src('sensor-rings');
+      lay({ id: 'sensor-fill', type: 'fill', source: 'sensor-rings',
+        paint: { 'fill-color': ['case', ['==', ['get', 'side'], 'blue'], '#4488ff', '#ff4444'], 'fill-opacity': 0.04 } });
+      lay({ id: 'sensor-line', type: 'line', source: 'sensor-rings',
+        paint: { 'line-color': ['case', ['==', ['get', 'side'], 'blue'], '#4488ff', '#ff4444'],
+          'line-width': ['case', ['get', 'selected'], 1.5, 0.8], 'line-opacity': 0.55,
+          'line-dasharray': [4, 3] } });
+
+      // Air weapon rings
+      src('air-rings');
+      lay({ id: 'air-fill', type: 'fill', source: 'air-rings',
+        paint: { 'fill-color': '#ff8800', 'fill-opacity': 0.04 } });
+      lay({ id: 'air-line', type: 'line', source: 'air-rings',
+        paint: { 'line-color': '#ff8800',
+          'line-width': ['case', ['get', 'selected'], 1.5, 0.8], 'line-opacity': 0.65 } });
+
+      // Surface weapon rings
+      src('srf-rings');
+      lay({ id: 'srf-fill', type: 'fill', source: 'srf-rings',
+        paint: { 'fill-color': '#ff3300', 'fill-opacity': 0.04 } });
+      lay({ id: 'srf-line', type: 'line', source: 'srf-rings',
+        paint: { 'line-color': '#ff3300',
+          'line-width': ['case', ['get', 'selected'], 1.5, 0.8], 'line-opacity': 0.65,
+          'line-dasharray': [6, 3] } });
 
       src('sel');
       lay({ id: 'sel-ring', type: 'circle', source: 'sel',
@@ -251,6 +324,17 @@ export function BuilderMap({
       }] : [],
     }));
   }, [mapReady, units, selectedUnitId]);
+
+  // ── Range rings ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map) return;
+    const sd = (id: string, data: MapData) =>
+      (map.getSource(id) as maplibregl.GeoJSONSource)?.setData(data);
+    sd('sensor-rings', builderSensorRings(units, unitTypes, rings.sensor, selectedUnitId));
+    sd('air-rings',    builderWeaponRings(units, unitTypes, 'air',     rings.airWeapon,     selectedUnitId));
+    sd('srf-rings',    builderWeaponRings(units, unitTypes, 'surface', rings.surfaceWeapon, selectedUnitId));
+  }, [mapReady, units, unitTypes, rings, selectedUnitId]);
 
   // ── Objective markers (read-only) ─────────────────────────────────────────
   useEffect(() => {

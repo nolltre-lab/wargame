@@ -44,6 +44,8 @@ export function ScenarioBuilder({ onExit }: Props) {
   const [scenarioName, setScenarioName] = useState('my_scenario');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  const [rings, setRings] = useState({ sensor: false, airWeapon: false, surfaceWeapon: false });
+  const toggleRing = (k: keyof typeof rings) => setRings(r => ({ ...r, [k]: !r[k] }));
 
   // ── Escape cancels active placement ──────────────────────────────────────
   useEffect(() => {
@@ -598,6 +600,8 @@ export function ScenarioBuilder({ onExit }: Props) {
           <BuilderMap
             units={placedUnits}
             objectives={objectives}
+            unitTypes={unitTypes}
+            rings={rings}
             selectedUnitId={selectedId}
             isPlacing={!!placingType}
             onMapClick={handleMapClick}
@@ -605,6 +609,31 @@ export function ScenarioBuilder({ onExit }: Props) {
             onUnitMove={handleUnitMove}
             flyTo={flyTo}
           />
+
+          {/* Range ring toggles — same style as sim toolbar */}
+          <div style={{
+            position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', gap: 6, zIndex: 10,
+            background: 'rgba(6,10,18,0.88)', border: '1px solid #1e2e4a',
+            padding: '6px 10px', fontFamily: '"Courier New", monospace', fontSize: 11,
+          }}>
+            <span style={{ color: '#4a6a8a', letterSpacing: 1, marginRight: 4, alignSelf: 'center' }}>RANGES</span>
+            {([
+              ['sensor',       'SENSOR',   '#4488ff'] as const,
+              ['airWeapon',    'A-A/S-A',  '#ff8800'] as const,
+              ['surfaceWeapon','A-S/S-S',  '#ff3300'] as const,
+            ] as const).map(([key, label, color]) => (
+              <button key={key} onClick={() => toggleRing(key)} style={{
+                background: rings[key] ? `${color}22` : 'transparent',
+                border: `1px solid ${rings[key] ? color : '#2a3e5a'}`,
+                color: rings[key] ? color : '#4a6a8a',
+                fontFamily: '"Courier New", monospace', fontSize: 11,
+                padding: '3px 10px', cursor: 'pointer', letterSpacing: 1,
+              }}>
+                {label}
+              </button>
+            ))}
+          </div>
 
           {/* Placement hint overlay */}
           {placingType && (
