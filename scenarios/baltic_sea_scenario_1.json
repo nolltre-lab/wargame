@@ -1,18 +1,14 @@
 {
-  "id": "baltic_sea",
-  "name": "Baltic Sea",
-  "description": "NATO eastern flank — Estonia, Latvia, Lithuania, Poland, Finland, Sweden vs Russian Western Military District and Kaliningrad exclave",
-  "center": [
-    22.0,
-    58.0
-  ],
-  "zoom": 5,
+  "name": "baltic_sea_scenario_1",
+  "start_time": "2024-06-15T04:00:00Z",
+  "tick_duration_seconds": 60,
+  "maritime_corridors": [],
   "objectives": [
     {
       "id": "amari_ab",
-      "name": "Ämari Air Base",
-      "lat": 59.2622,
-      "lon": 24.2075,
+      "name": "\u00c4mari Air Base",
+      "lat": 59.482,
+      "lon": 24.2083,
       "type": "airfield",
       "controlling_side": null
     },
@@ -58,7 +54,7 @@
     },
     {
       "id": "liepaja_port",
-      "name": "Liepāja Naval Port",
+      "name": "Liep\u0101ja Naval Port",
       "lat": 56.5104,
       "lon": 21.0129,
       "type": "port",
@@ -74,7 +70,7 @@
     },
     {
       "id": "siauliai_ab",
-      "name": "Šiauliai Air Base",
+      "name": "\u0160iauliai Air Base",
       "lat": 55.8939,
       "lon": 23.3953,
       "type": "airfield",
@@ -98,7 +94,7 @@
     },
     {
       "id": "klaipeda",
-      "name": "Klaipėda Port",
+      "name": "Klaip\u0117da Port",
       "lat": 55.7033,
       "lon": 21.1442,
       "type": "port",
@@ -114,7 +110,7 @@
     },
     {
       "id": "gdansk",
-      "name": "Gdańsk",
+      "name": "Gda\u0144sk",
       "lat": 54.352,
       "lon": 18.6466,
       "type": "city",
@@ -211,8 +207,8 @@
     {
       "id": "gulf_of_finland",
       "name": "Gulf of Finland",
-      "lat": 60.0,
-      "lon": 26.0,
+      "lat": 60,
+      "lon": 26,
       "type": "maritime",
       "controlling_side": null
     },
@@ -220,15 +216,15 @@
       "id": "baltic_central",
       "name": "Baltic Sea Central",
       "lat": 57.5,
-      "lon": 19.0,
+      "lon": 19,
       "type": "maritime",
       "controlling_side": null
     },
     {
       "id": "kaliningrad_sea",
       "name": "Kaliningrad Sea Approach",
-      "lat": 55.0,
-      "lon": 20.0,
+      "lat": 55,
+      "lon": 20,
       "type": "maritime",
       "controlling_side": null
     },
@@ -239,6 +235,120 @@
       "lon": 12.5,
       "type": "maritime",
       "controlling_side": null
+    }
+  ],
+  "units": [
+    {
+      "id": "blue_f35a_1782502314606",
+      "name": "F-35A Lightning II (Blue) #1",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 59.557064895269804,
+      "lon": 23.330444335936335,
+      "airborne": true,
+      "loadout": "",
+      "home_base_lat": null,
+      "home_base_lon": null
+    },
+    {
+      "id": "blue_f35a_1782502315093",
+      "name": "F-35A Lightning II (Blue) #2",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 58.91080133651647,
+      "lon": 23.44030761718554,
+      "airborne": true,
+      "loadout": "",
+      "home_base_lat": null,
+      "home_base_lon": null
+    },
+    {
+      "id": "red_su27s_1782502321633",
+      "name": "Su-27S Flanker-B (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su27s",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.71810836331258,
+      "lon": 27.955688476560397,
+      "airborne": true,
+      "loadout": "",
+      "home_base_lat": null,
+      "home_base_lon": null
+    },
+    {
+      "id": "red_su27s_1782502322118",
+      "name": "Su-27S Flanker-B (Red) #2",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su27s",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.17640659553538,
+      "lon": 28.186401367185653,
+      "airborne": true,
+      "loadout": "",
+      "home_base_lat": null,
+      "home_base_lon": null
+    },
+    {
+      "id": "red_su30sm_1782590922370",
+      "name": "Su-30SM Flanker-H (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 60.046623765546116,
+      "lon": 27.792729782473714,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757
+    },
+    {
+      "id": "red_su30sm_1782590924607",
+      "name": "Su-30SM Flanker-H (Red) #2",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.9147109910098,
+      "lon": 27.82568876684948,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757
+    },
+    {
+      "id": "red_su30sm_1782590987521",
+      "name": "Su-30SM Flanker-H (Red) #3",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.42651731647848,
+      "lon": 27.836675094973117,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757
+    },
+    {
+      "id": "red_su30sm_1782590992537",
+      "name": "Su-30SM Flanker-H (Red) #4",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.577060584052305,
+      "lon": 27.902593063724595,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757
     }
   ]
 }

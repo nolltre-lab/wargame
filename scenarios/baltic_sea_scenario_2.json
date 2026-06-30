@@ -1,18 +1,13 @@
 {
-  "id": "baltic_sea",
-  "name": "Baltic Sea",
-  "description": "NATO eastern flank — Estonia, Latvia, Lithuania, Poland, Finland, Sweden vs Russian Western Military District and Kaliningrad exclave",
-  "center": [
-    22.0,
-    58.0
-  ],
-  "zoom": 5,
+  "name": "baltic_sea_scenario_2",
+  "start_time": "2024-06-15T04:00:00Z",
+  "tick_duration_seconds": 60,
   "objectives": [
     {
       "id": "amari_ab",
       "name": "Ämari Air Base",
-      "lat": 59.2622,
-      "lon": 24.2075,
+      "lat": 59.482,
+      "lon": 24.2083,
       "type": "airfield",
       "controlling_side": null
     },
@@ -211,8 +206,8 @@
     {
       "id": "gulf_of_finland",
       "name": "Gulf of Finland",
-      "lat": 60.0,
-      "lon": 26.0,
+      "lat": 60,
+      "lon": 26,
       "type": "maritime",
       "controlling_side": null
     },
@@ -220,15 +215,15 @@
       "id": "baltic_central",
       "name": "Baltic Sea Central",
       "lat": 57.5,
-      "lon": 19.0,
+      "lon": 19,
       "type": "maritime",
       "controlling_side": null
     },
     {
       "id": "kaliningrad_sea",
       "name": "Kaliningrad Sea Approach",
-      "lat": 55.0,
-      "lon": 20.0,
+      "lat": 55,
+      "lon": 20,
       "type": "maritime",
       "controlling_side": null
     },
@@ -239,6 +234,154 @@
       "lon": 12.5,
       "type": "maritime",
       "controlling_side": null
+    }
+  ],
+  "units": [
+    {
+      "id": "blue_f35a_1782591893540",
+      "name": "F-35A Lightning II (Blue) #1",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 58.81991353483727,
+      "lon": 22.847045898435283,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.482,
+      "home_base_lon": 24.2083,
+      "mission": {
+        "type": "escort",
+        "objective_id": null,
+        "patrol_lat": 58.81991353483727,
+        "patrol_lon": 22.847045898435283,
+        "target_unit_id": "blue_e7_wedgetail_1782659211292",
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "red_su30sm_1782592076978",
+      "name": "Su-30SM Flanker-H (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.81215432529544,
+      "lon": 29.197143554685454,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 59.81215432529544,
+        "patrol_lon": 29.197143554685454,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "blue_e7_wedgetail_1782659211292",
+      "name": "E-7A Wedgetail AEW&C (Blue) #1",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "e7_wedgetail",
+      "sidc": "SFGPUCI----E---",
+      "lat": 59.114427573414844,
+      "lon": 22.847045898435283,
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 59.482,
+      "home_base_lon": 24.2083,
+      "mission": {
+        "type": "area_patrol",
+        "objective_id": null,
+        "patrol_lat": 59.114427573414844,
+        "patrol_lon": 22.847045898435283,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "red_a50u_1782659245786",
+      "name": "A-50U Mainstay AEW&C (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "a50u",
+      "sidc": "SHGPUCI----E---",
+      "lat": 59.95547766370561,
+      "lon": 27.76892089843608,
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "area_patrol",
+        "objective_id": null,
+        "patrol_lat": 59.31685109005059,
+        "patrol_lon": 29.416870117185454,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "red_su30sm_1782670454691",
+      "name": "Su-30SM Flanker-H (Red) #2",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 60.08925708304557,
+      "lon": 29.17778615419752,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 60.08925708304557,
+        "patrol_lon": 29.17778615419752,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "red_su34_1782673338209",
+      "name": "Su-34 Fullback (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su34",
+      "sidc": "SHAPMFF----E---",
+      "lat": 60.212997118749485,
+      "lon": 27.538208007810795,
+      "airborne": true,
+      "loadout": "anti_ship",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757
+    },
+    {
+      "id": "blue_frigate_hnlms_1782673461263",
+      "name": "HNLMS De Ruyter F803 (LCF frigate) (Blue) #1",
+      "side": "blue",
+      "unit_class": "naval",
+      "unit_type": "frigate_hnlms",
+      "sidc": "SFSPCLFF---E---",
+      "lat": 59.5681961594301,
+      "lon": 22.319702148434942,
+      "airborne": true,
+      "loadout": "aaw_focus",
+      "home_base_lat": 60.4518,
+      "home_base_lon": 22.2666,
+      "mission": {
+        "type": "area_patrol",
+        "objective_id": null,
+        "patrol_lat": 59.5681961594301,
+        "patrol_lon": 22.319702148434942,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     }
   ]
 }

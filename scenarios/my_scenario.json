@@ -1,0 +1,18 @@
+{
+  "name": "my_scenario",
+  "start_time": "2024-06-15T04:00:00Z",
+  "tick_duration_seconds": 60,
+  "objectives": [],
+  "units": [
+    {
+      "id": "blue_f35a_1782501179717",
+      "name": "F-35A Lightning II (Blue) #1",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 59.50692864422197,
+      "lon": 21.660522460934857
+    }
+  ]
+}

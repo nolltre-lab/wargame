@@ -2,18 +2,24 @@
   "name": "baltic_flashpoint",
   "start_time": "2024-06-15T04:00:00Z",
   "tick_duration_seconds": 60,
-  "maritime_corridors": [
-    [
-      60.3,
-      22
+  "goals": {
+    "blue": [
+      {"type": "hold",      "objective_id": "amari_ab",     "priority": 1},
+      {"type": "hold",      "objective_id": "tallinn_port",  "priority": 2},
+      {"type": "intercept", "priority": 3, "air_count": 1}
+    ],
+    "red": [
+      {"type": "capture", "objective_id": "amari_ab", "priority": 1, "ground_count": 1, "air_count": 1},
+      {"type": "capture", "objective_id": "narva",    "priority": 2, "ground_count": 1, "air_count": 0},
+      {"type": "intercept", "priority": 3, "air_count": 1}
     ]
-  ],
+  },
   "objectives": [
     {
       "id": "amari_ab",
       "name": "\u00c4mari Air Base",
-      "lat": 59.482,
-      "lon": 24.0808,
+      "lat": 59.2622,
+      "lon": 24.2075,
       "type": "airfield",
       "controlling_side": "blue"
     },
@@ -90,12 +96,12 @@
       "unit_class": "air",
       "unit_type": "f16c",
       "sidc": "SFAPCFF----H---",
-      "lat": 59.482,
-      "lon": 24.0808,
+      "lat": 59.2622,
+      "lon": 24.2075,
       "airborne": false,
       "loadout": "aa_focus",
-      "home_base_lat": 59.482,
-      "home_base_lon": 24.0808
+      "home_base_lat": 59.2622,
+      "home_base_lon": 24.2075
     },
     {
       "id": "blue_armor_1",
@@ -132,8 +138,8 @@
       "unit_class": "naval",
       "unit_type": "frigate_hnlms",
       "sidc": "SFSPCLS----H---",
-      "lat": 59,
-      "lon": 22.5,
+      "lat": 58.95,
+      "lon": 21.5,
       "airborne": true,
       "loadout": "aaw_focus",
       "home_base_lat": 59.349,
