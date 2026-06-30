@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useSimStore } from '../store/simStore';
@@ -26,9 +26,29 @@ function sensorRings(units: Unit[], show: boolean, sel: string | null): MapData 
     if (u.destroyed || u.sensor_km <= 0) continue;
     const isSel = u.id === sel;
     if (!show && !isSel) continue;
-    const f = u.unit_class === 'air'
-      ? conePolygon(u.lat, u.lon, u.sensor_km, u.heading)
-      : circlePolygon(u.lat, u.lon, u.sensor_km);
+    // sensor_arc_deg + sensor_bi_cone drive shape:
+    //   360°           → full circle
+    //   <360 bi_cone   → two side-facing arcs (port + starboard), dead zones fore/aft
+    //   <360 single    → one wide forward cone
+    //   null           → default (forward cone for air, circle for surface)
+    const arc = u.sensor_arc_deg;
+    if (arc != null && arc < 360 && u.sensor_bi_cone) {
+      // Each arc covers half the total arc, facing perpendicular to heading
+      const halfAngle = arc / 4;  // total arc / 2 sides / 2 (half-angle of each cone)
+      for (const side of [90, 270] as const) {
+        const f = conePolygon(u.lat, u.lon, u.sensor_km, (u.heading + side) % 360, halfAngle);
+        f.properties = { side: u.side, selected: isSel };
+        feats.push(f);
+      }
+      continue;
+    }
+    const f = arc != null
+      ? arc >= 360
+        ? circlePolygon(u.lat, u.lon, u.sensor_km)
+        : conePolygon(u.lat, u.lon, u.sensor_km, u.heading, arc / 2)
+      : u.unit_class === 'air'
+        ? conePolygon(u.lat, u.lon, u.sensor_km, u.heading)
+        : circlePolygon(u.lat, u.lon, u.sensor_km);
     f.properties = { side: u.side, selected: isSel };
     feats.push(f);
   }
@@ -135,11 +155,22 @@ export function MapView({ rings }: MapViewProps) {
   const clickedRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
 
-  const units = useSimStore(s => s.units);
+  const allUnits = useSimStore(s => s.units);
+  const perspective = useSimStore(s => s.perspective);
+  const blueDetected = useSimStore(s => s.blue_detected);
+  const redDetected = useSimStore(s => s.red_detected);
   const objectives = useSimStore(s => s.objectives);
   const selectedUnitId = useSimStore(s => s.selectedUnitId);
   const latestEvents = useSimStore(s => s.latestEvents);
   const selectUnit = useSimStore(s => s.selectUnit);
+
+  // Apply fog-of-war perspective filter
+  const units = useMemo(() => {
+    if (perspective === 'god') return allUnits;
+    const mySide = perspective;
+    const detectedSet = new Set(perspective === 'blue' ? blueDetected : redDetected);
+    return allUnits.filter(u => u.side === mySide || detectedSet.has(u.id));
+  }, [allUnits, perspective, blueDetected, redDetected]);
 
   // ── Map init ───────────────────────────────────────────────────────────────
   useEffect(() => {

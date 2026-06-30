@@ -1,16 +1,21 @@
 import { create } from 'zustand';
-import type { SimState, Unit, Objective, CombatEvent } from '../types';
+import type { SimState, Unit, Objective, CombatEvent, SideGoal } from '../types';
 
 const MAX_LOG_EVENTS = 50;
+
+export type Perspective = 'god' | 'blue' | 'red';
 
 interface SimStore extends Omit<SimState, 'events'> {
   latestEvents: CombatEvent[];
   eventLog: CombatEvent[];
   selectedUnitId: string | null;
+  perspective: Perspective;
   selectUnit: (id: string | null) => void;
+  setPerspective: (p: Perspective) => void;
   setSimState: (state: SimState) => void;
   getSelectedUnit: () => Unit | null;
   getObjective: (id: string) => Objective | undefined;
+  setGoals: (side: 'blue' | 'red', goals: SideGoal[]) => void;
 }
 
 export const useSimStore = create<SimStore>((set, get) => ({
@@ -19,11 +24,16 @@ export const useSimStore = create<SimStore>((set, get) => ({
   running: false,
   units: [],
   objectives: [],
+  blue_detected: [],
+  red_detected: [],
+  goals: { blue: [], red: [] },
   latestEvents: [],
   eventLog: [],
   selectedUnitId: null,
+  perspective: 'god',
 
   selectUnit: (id) => set({ selectedUnitId: id }),
+  setPerspective: (p) => set({ perspective: p }),
 
   setSimState: (state) =>
     set((prev) => {
@@ -37,6 +47,9 @@ export const useSimStore = create<SimStore>((set, get) => ({
         running: state.running,
         units: state.units,
         objectives: state.objectives,
+        blue_detected: state.blue_detected ?? [],
+        red_detected: state.red_detected ?? [],
+        goals: state.goals ?? prev.goals,
         latestEvents: incoming,
         eventLog: newLog,
       };
@@ -48,4 +61,7 @@ export const useSimStore = create<SimStore>((set, get) => ({
   },
 
   getObjective: (id) => get().objectives.find((o) => o.id === id),
+
+  setGoals: (side, goals) =>
+    set((prev) => ({ goals: { ...prev.goals, [side]: goals } })),
 }));

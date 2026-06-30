@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { emptyFC, circlePolygon, type RingFeature } from '../lib/geo';
+import { emptyFC, circlePolygon, conePolygon, type RingFeature } from '../lib/geo';
 import { loadSidcImage } from '../lib/milsymbol';
 import type { BuilderUnit, Objective, RingToggles, UnitTypeInfo } from '../types';
 
@@ -20,11 +20,28 @@ function builderSensorRings(
 ): MapData {
   const feats: RingFeature[] = [];
   for (const u of units) {
-    const sensor_km = unitTypes[u.unit_type]?.sensor_km ?? 0;
+    const info = unitTypes[u.unit_type];
+    const sensor_km = info?.sensor_km ?? 0;
     if (sensor_km <= 0) continue;
     const isSel = u.id === sel;
     if (!show && !isSel) continue;
-    const f = circlePolygon(u.lat, u.lon, sensor_km);
+    const arc = info?.sensor_arc_deg;
+    const biCone = info?.sensor_bi_cone;
+    if (arc != null && arc < 360 && biCone) {
+      // Two side-facing arcs pointing East and West (heading unknown in builder)
+      const halfAngle = arc / 4;
+      for (const side of [90, 270] as const) {
+        const f = conePolygon(u.lat, u.lon, sensor_km, side, halfAngle);
+        f.properties = { side: u.side, selected: isSel };
+        feats.push(f);
+      }
+      continue;
+    }
+    const f = arc != null
+      ? arc >= 360
+        ? circlePolygon(u.lat, u.lon, sensor_km)
+        : conePolygon(u.lat, u.lon, sensor_km, 0, arc / 2)
+      : circlePolygon(u.lat, u.lon, sensor_km);
     f.properties = { side: u.side, selected: isSel };
     feats.push(f);
   }

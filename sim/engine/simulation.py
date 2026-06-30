@@ -5,9 +5,10 @@ from pathlib import Path
 
 from .unit import Unit, Mission, MissionType, MissionStatus
 from .objective import Objective
-from .geo import haversine, bearing, destination, BALTIC_NAVAL_CORRIDORS
+from .geo import haversine, bearing, destination
 from .ai import resolve_missions
-from .combat import resolve_combat, default_hp, sensor_range, weapon_range, valid_targets as unit_vtargets, UNIT_TYPE_LIB
+from .combat import resolve_combat, build_detection_picture, default_hp, sensor_range, weapon_range, valid_targets as unit_vtargets, UNIT_TYPE_LIB
+from .commander import Commander
 
 
 class SimulationEngine:
@@ -20,15 +21,18 @@ class SimulationEngine:
         self.running: bool = False
         self.tick_count: int = 0
         self._recent_events: List[dict] = []
-        self.maritime_corridors: List[tuple] = list(BALTIC_NAVAL_CORRIDORS)
+        self._detection_picture: Dict[str, set] = {"blue": set(), "red": set()}
+        self._gci_picture: Dict[str, set] = {"blue": set(), "red": set()}
+        self.commanders: Dict[str, Commander] = {
+            "blue": Commander("blue"),
+            "red":  Commander("red"),
+        }
 
     def load_scenario(self, path: str) -> None:
         data = json.loads(Path(path).read_text())
         self.sim_time = datetime.fromisoformat(data["start_time"].replace("Z", "+00:00"))
         self.tick_duration = float(data.get("tick_duration_seconds", 60.0))
         self.objectives = {o["id"]: Objective(**o) for o in data.get("objectives", [])}
-        raw_corridors = data.get("maritime_corridors", [])
-        self.maritime_corridors = [tuple(c) for c in raw_corridors] if raw_corridors else list(BALTIC_NAVAL_CORRIDORS)
 
         units: Dict[str, Unit] = {}
         for u in data["units"]:
@@ -57,9 +61,20 @@ class SimulationEngine:
                     if "weapon_km" in preset:
                         unit.weapon_km_override = float(preset["weapon_km"])
 
-            # Stamp data_link from library (can't be set in scenario JSON)
+            # Stamp data_link, altitude_m, rcs from library (not settable in scenario JSON)
             if unit.unit_type:
-                unit.data_link = bool(UNIT_TYPE_LIB.get(unit.unit_type, {}).get("data_link", False))
+                lib_entry = UNIT_TYPE_LIB.get(unit.unit_type, {})
+                unit.data_link = bool(lib_entry.get("data_link", False))
+                unit.is_surveillance = bool(lib_entry.get("is_surveillance", False))
+                arc = lib_entry.get("sensor_arc_deg")
+                unit.sensor_arc_deg = int(arc) if arc is not None else None
+                unit.sensor_bi_cone = bool(lib_entry.get("sensor_bi_cone", False))
+                unit.altitude_m = float(lib_entry.get("altitude_m", 100.0))
+                unit.rcs = float(lib_entry.get("rcs", 5.0))
+            # Loaded missions always start EN_ROUTE so the unit begins executing immediately
+            if unit.mission:
+                unit.mission.status = MissionStatus.EN_ROUTE
+            unit.emcon = True  # all units actively emitting; AI will manage EMCON later
 
             # Always start at full fuel, not rearming
             unit.fuel_pct = 100.0
@@ -68,6 +83,12 @@ class SimulationEngine:
 
             units[unit.id] = unit
         self.units = units
+
+        # Load side goals and initialise commanders
+        goals_data = data.get("goals", {})
+        for side in ("blue", "red"):
+            self.commanders[side].set_goals(goals_data.get(side, []))
+
         self._recent_events = []
         self.tick_count = 0
         self.running = False
@@ -78,17 +99,25 @@ class SimulationEngine:
     _REARM_TICKS = {"air": 8,   "ground": 5,    "naval": 12}
 
     def tick(self) -> None:
-        events = resolve_combat(self.units)
+        self._detection_picture = build_detection_picture(self.units)
+        events, under_fire = resolve_combat(self.units)
         resource_events = self._burn_resources()
         for e in events + resource_events:
             if e["type"] in ("destroyed", "out_of_ammo", "low_fuel", "rtb_complete"):
                 e["tick"] = self.tick_count
         self._recent_events = events + resource_events
 
-        mission_events = resolve_missions(self.units, self.objectives, self.maritime_corridors)
+        mission_events = resolve_missions(self.units, self.objectives, under_fire, self.tick_count)
         for e in mission_events:
             e["tick"] = self.tick_count
         self._recent_events.extend(mission_events)
+
+        # Commander AI: re-evaluate goals and assign missions to available units
+        for commander in self.commanders.values():
+            cmd_events = commander.evaluate(self.units, self.objectives, self.tick_count)
+            for e in cmd_events:
+                e["tick"] = self.tick_count
+            self._recent_events.extend(cmd_events)
 
         capture_events = self._resolve_objective_control()
         self._recent_events.extend(capture_events)
@@ -145,7 +174,11 @@ class SimulationEngine:
         # Restore previous mission so the unit resumes without player action.
         # Ground units never change their mission during rearm, so leave it as-is.
         if unit.unit_class != UnitClass.GROUND:
-            unit.mission = unit.previous_mission  # None is fine — air enters holding orbit
+            prev = unit.previous_mission
+            if prev is not None:
+                prev = prev.model_copy()  # don't mutate the stored object
+                prev.status = MissionStatus.EN_ROUTE  # always restart fresh — avoids stale ON_STATION
+            unit.mission = prev
             if unit.unit_class == UnitClass.AIR and unit.mission is not None:
                 unit.airborne = True  # take off
         unit.previous_mission = None
@@ -231,6 +264,7 @@ class SimulationEngine:
         objective_id: str | None,
         patrol_lat: float | None = None,
         patrol_lon: float | None = None,
+        target_unit_id: str | None = None,
     ) -> bool:
         from .unit import UnitClass
         unit = self.units.get(unit_id)
@@ -244,6 +278,7 @@ class SimulationEngine:
             objective_id=objective_id,
             patrol_lat=patrol_lat,
             patrol_lon=patrol_lon,
+            target_unit_id=target_unit_id,
             status=MissionStatus.EN_ROUTE,
         )
         if MissionType(mission_type) == MissionType.RTB:
@@ -254,6 +289,12 @@ class SimulationEngine:
         # Air units taking off for any non-RTB mission become airborne
         if unit.unit_class == UnitClass.AIR and mission_type != MissionType.RTB:
             unit.airborne = True
+        return True
+
+    def update_goals(self, side: str, goals: list) -> bool:
+        if side not in self.commanders:
+            return False
+        self.commanders[side].set_goals(goals)
         return True
 
     def clear_mission(self, unit_id: str) -> bool:
@@ -280,4 +321,10 @@ class SimulationEngine:
             "units": unit_states,
             "objectives": [o.model_dump() for o in self.objectives.values()],
             "events": self._recent_events,
+            "blue_detected": list(self._detection_picture["blue"]),
+            "red_detected": list(self._detection_picture["red"]),
+            "goals": {
+                side: [g.to_dict() for g in cmd.goals]
+                for side, cmd in self.commanders.items()
+            },
         }

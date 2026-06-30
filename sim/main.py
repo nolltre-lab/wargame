@@ -74,6 +74,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     msg.get("objective_id"),
                     msg.get("patrol_lat"),
                     msg.get("patrol_lon"),
+                    msg.get("target_unit_id"),
                 )
                 await broadcast(sim.get_state())
 
@@ -186,6 +187,31 @@ async def get_theater(theater_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Theater not found")
     with open(path) as f:
         return json.load(f)
+
+
+# ── Commander goals endpoints ─────────────────────────────────────────────────
+
+@app.get("/goals")
+async def get_goals() -> dict:
+    """Return current commander goals for both sides."""
+    return {
+        side: [g.to_dict() for g in cmd.goals]
+        for side, cmd in sim.commanders.items()
+    }
+
+
+class GoalsRequest(BaseModel):
+    goals: list  # list of SideGoal dicts
+
+
+@app.post("/goals/{side}")
+async def set_goals(side: str, req: GoalsRequest) -> dict:
+    """Replace all goals for a side and broadcast updated state."""
+    if side not in ("blue", "red"):
+        raise HTTPException(status_code=400, detail="side must be 'blue' or 'red'")
+    sim.update_goals(side, req.goals)
+    await broadcast(sim.get_state())
+    return {"side": side, "goals": [g.to_dict() for g in sim.commanders[side].goals]}
 
 
 class LoadRequest(BaseModel):

@@ -1,6 +1,6 @@
 export type Side = 'blue' | 'red';
 export type UnitClass = 'air' | 'ground' | 'naval';
-export type MissionType = 'secure' | 'defend' | 'patrol' | 'area_patrol' | 'intercept' | 'rtb';
+export type MissionType = 'secure' | 'defend' | 'patrol' | 'area_patrol' | 'intercept' | 'rtb' | 'escort';
 export type MissionStatus = 'en_route' | 'on_station';
 export type ObjectiveType = 'airfield' | 'port' | 'city' | 'bridge' | 'maritime' | 'base';
 
@@ -9,6 +9,7 @@ export interface Mission {
   objective_id: string | null;
   patrol_lat: number | null;
   patrol_lon: number | null;
+  target_unit_id: string | null;
   status: MissionStatus;
 }
 
@@ -43,6 +44,12 @@ export interface Unit {
   rearming: boolean;
   rearm_ticks_left: number;
   data_link: boolean;
+  is_surveillance: boolean;
+  sensor_arc_deg: number | null;
+  sensor_bi_cone: boolean;
+  altitude_m: number;
+  rcs: number;
+  emcon: boolean;
 }
 
 export interface Objective {
@@ -55,7 +62,7 @@ export interface Objective {
 }
 
 export interface CombatEvent {
-  type: 'engagement' | 'destroyed' | 'captured' | 'out_of_ammo' | 'low_fuel' | 'rtb_complete' | 'bingo_fuel' | 'winchester';
+  type: 'engagement' | 'destroyed' | 'captured' | 'out_of_ammo' | 'low_fuel' | 'rtb_complete' | 'bingo_fuel' | 'winchester' | 'commander_assign';
   attacker_id?: string;
   attacker_name?: string;
   target_id?: string;
@@ -67,9 +74,23 @@ export interface CombatEvent {
   unit_name?: string;
   objective_id?: string;
   objective_name?: string;
+  objective?: string;
   ammo_type?: string;
+  mission?: string;
+  goal_type?: string;
   side?: Side;
   tick?: number;
+}
+
+export interface SideGoal {
+  type: 'hold' | 'capture' | 'intercept' | 'patrol' | 'strike';
+  priority: number;
+  objective_id: string | null;
+  area_lat: number | null;
+  area_lon: number | null;
+  ground_count: number;
+  air_count: number;
+  naval_count: number;
 }
 
 export interface SimState {
@@ -79,10 +100,13 @@ export interface SimState {
   units: Unit[];
   objectives: Objective[];
   events: CombatEvent[];
+  blue_detected: string[];
+  red_detected: string[];
+  goals: { blue: SideGoal[]; red: SideGoal[] };
 }
 
 export type WsOutMessage =
-  | { type: 'assign_mission'; unit_id: string; mission_type: MissionType; objective_id?: string; patrol_lat?: number; patrol_lon?: number }
+  | { type: 'assign_mission'; unit_id: string; mission_type: MissionType; objective_id?: string; patrol_lat?: number; patrol_lon?: number; target_unit_id?: string }
   | { type: 'clear_mission'; unit_id: string };
 
 export interface LoadoutPreset {
@@ -109,6 +133,11 @@ export interface UnitTypeInfo {
   notes?: string;
   rearm_ticks?: number;
   data_link?: boolean;
+  altitude_m?: number;
+  rcs?: number;
+  is_surveillance?: boolean;
+  sensor_arc_deg?: number;
+  sensor_bi_cone?: boolean;
   loadout_presets?: Record<string, LoadoutPreset>;
 }
 
@@ -116,6 +145,14 @@ export interface TheaterInfo {
   id: string;
   name: string;
   description: string;
+}
+
+export interface BuilderMission {
+  type: MissionType;
+  objective_id: string | null;
+  patrol_lat: number | null;
+  patrol_lon: number | null;
+  target_unit_id: string | null;
 }
 
 export interface BuilderUnit {
@@ -131,4 +168,5 @@ export interface BuilderUnit {
   loadout: string;
   home_base_lat: number | null;
   home_base_lon: number | null;
+  initial_mission: BuilderMission | null;
 }

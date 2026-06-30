@@ -1,5 +1,5 @@
 {
-  "_comment": "Unit type library. Values are simplified but grounded in open-source data. sensor_km = detection range, weapon_km = max engagement range, attack_per_tick = damage per 60s tick at full engagement, default_hp = starting health. fuel_burn_per_tick = % fuel consumed per tick when moving, fuel_idle_per_tick = % when stationary, rearm_ticks = ticks at home base to fully rearm & refuel. data_link = true means the unit participates in the tactical data network (Link-16/MADL/AFATDS/SEWACO) — data-linked units share their sensor picture so any data-linked friendly can engage targets detected by any other data-linked friendly. loadout_presets define magazine counts per ammo class: aa (anti-air), ag (anti-ground), as (anti-ship).",
+  "_comment": "Unit type library. sensor_km = radar detection range vs reference 5m² target. altitude_m = typical operating altitude (m) — sensor mast height for surface units, cruise altitude for air. rcs = radar cross-section (m²); detection range scales with (rcs/5.0)^0.25. emcon handled at runtime. data_link = participates in Link-16/MADL/AFATDS network. loadout_presets define magazine counts (aa/ag/as) and optional weapon_km override.",
 
   "f16c": {
     "display_name": "F-16C Block 50 Fighting Falcon",
@@ -9,6 +9,8 @@
     "attack_per_tick": 28,
     "default_hp": 60,
     "max_speed_kmh": 800,
+    "altitude_m": 8000,
+    "rcs": 5.0,
     "valid_targets": ["air", "ground", "naval"],
     "fuel_burn_per_tick": 1.5,
     "fuel_idle_per_tick": 0.2,
@@ -20,7 +22,7 @@
       "anti_ship":  { "label": "Anti-Ship (Harpoon)",   "magazines": { "aa": 2, "ag": 0, "as": 3 }, "weapon_km": 200 },
       "multi_role": { "label": "Multi-Role",            "magazines": { "aa": 4, "ag": 4, "as": 0 } }
     },
-    "notes": "AN/APG-68(V)9 radar ~150km vs fighter. AIM-120C AMRAAM BVR up to 105km; AGM-65 Maverick for CAS. Block 50 carries HTS pod for SEAD. MIDS-JTRS Link-16 data link."
+    "notes": "AN/APG-68(V)9 radar. MIDS-JTRS Link-16. RCS ~5m² (reference fighter)."
   },
 
   "f35a": {
@@ -31,6 +33,8 @@
     "attack_per_tick": 32,
     "default_hp": 65,
     "max_speed_kmh": 700,
+    "altitude_m": 10000,
+    "rcs": 0.005,
     "valid_targets": ["air", "ground", "naval"],
     "fuel_burn_per_tick": 1.5,
     "fuel_idle_per_tick": 0.2,
@@ -42,7 +46,7 @@
       "anti_ship":  { "label": "Anti-Ship (JSM)",      "magazines": { "aa": 2,  "ag": 0, "as": 4 }, "weapon_km": 280 },
       "multi_role": { "label": "Multi-Role",           "magazines": { "aa": 4,  "ag": 4, "as": 0 } }
     },
-    "notes": "AN/APG-81 AESA radar, AN/AAQ-37 DAS 360 EO. AIM-120D ~180km, JSM anti-ship. MADL + Link-16 primary network node — highest data-link priority asset."
+    "notes": "AN/APG-81 AESA. MADL+Link-16. RCS ~0.005m² (all-aspect VLO)."
   },
 
   "eurofighter": {
@@ -53,17 +57,19 @@
     "attack_per_tick": 30,
     "default_hp": 62,
     "max_speed_kmh": 900,
+    "altitude_m": 10000,
+    "rcs": 0.5,
     "valid_targets": ["air", "ground", "naval"],
     "fuel_burn_per_tick": 1.5,
     "fuel_idle_per_tick": 0.2,
     "rearm_ticks": 8,
     "data_link": true,
     "loadout_presets": {
-      "aa_focus":   { "label": "Air Superiority (Meteor)",       "magazines": { "aa": 10, "ag": 0, "as": 0 } },
-      "strike":     { "label": "Strike (Brimstone/Paveway)",     "magazines": { "aa": 2,  "ag": 6, "as": 0 } },
-      "multi_role": { "label": "Multi-Role",                     "magazines": { "aa": 6,  "ag": 4, "as": 0 } }
+      "aa_focus":   { "label": "Air Superiority (Meteor)", "magazines": { "aa": 10, "ag": 0, "as": 0 } },
+      "strike":     { "label": "Strike (Brimstone/Paveway)","magazines": { "aa": 2,  "ag": 6, "as": 0 } },
+      "multi_role": { "label": "Multi-Role",               "magazines": { "aa": 6,  "ag": 4, "as": 0 } }
     },
-    "notes": "Captor-E AESA radar ~160km. Meteor BVRAAM range-denied ~100km. Link-16 data link."
+    "notes": "Captor-E AESA. Link-16. RCS ~0.5m² (partial LO shaping, no coatings)."
   },
 
   "su27s": {
@@ -74,6 +80,8 @@
     "attack_per_tick": 25,
     "default_hp": 55,
     "max_speed_kmh": 900,
+    "altitude_m": 9000,
+    "rcs": 15.0,
     "valid_targets": ["air", "ground", "naval"],
     "fuel_burn_per_tick": 1.5,
     "fuel_idle_per_tick": 0.2,
@@ -83,7 +91,7 @@
       "aa_focus":   { "label": "Air Superiority (R-77)", "magazines": { "aa": 10, "ag": 0, "as": 0 } },
       "multi_role": { "label": "Multi-Role",             "magazines": { "aa": 6,  "ag": 2, "as": 0 } }
     },
-    "notes": "N001 Myech coherent pulse-Doppler radar, ~100km vs fighter. R-77 active-homing AAM ~80km. No tactical data link — point sensor picture only."
+    "notes": "N001 Myech radar. No data link. RCS ~15m² (large planform, no LO features)."
   },
 
   "su30sm": {
@@ -94,18 +102,20 @@
     "attack_per_tick": 28,
     "default_hp": 60,
     "max_speed_kmh": 850,
+    "altitude_m": 9000,
+    "rcs": 15.0,
     "valid_targets": ["air", "ground", "naval"],
     "fuel_burn_per_tick": 1.4,
     "fuel_idle_per_tick": 0.2,
     "rearm_ticks": 8,
     "data_link": false,
     "loadout_presets": {
-      "aa_focus":   { "label": "Air Superiority",         "magazines": { "aa": 10, "ag": 0, "as": 0 } },
-      "strike":     { "label": "Strike (Kh-29/59)",       "magazines": { "aa": 2,  "ag": 8, "as": 0 } },
-      "anti_ship":  { "label": "Anti-Ship (Kh-35U)",      "magazines": { "aa": 2,  "ag": 0, "as": 4 }, "weapon_km": 250 },
-      "multi_role": { "label": "Multi-Role",              "magazines": { "aa": 4,  "ag": 4, "as": 2 } }
+      "aa_focus":   { "label": "Air Superiority",    "magazines": { "aa": 10, "ag": 0, "as": 0 } },
+      "strike":     { "label": "Strike (Kh-29/59)",  "magazines": { "aa": 2,  "ag": 8, "as": 0 } },
+      "anti_ship":  { "label": "Anti-Ship (Kh-35U)", "magazines": { "aa": 2,  "ag": 0, "as": 4 }, "weapon_km": 250 },
+      "multi_role": { "label": "Multi-Role",         "magazines": { "aa": 4,  "ag": 4, "as": 2 } }
     },
-    "notes": "N011M Bars PESA radar ~120km. Kh-59MK2 for DEAD/SEAD. No compatible NATO data link."
+    "notes": "N011M Bars PESA. No NATO data link. RCS ~15m²."
   },
 
   "su34": {
@@ -116,367 +126,19 @@
     "attack_per_tick": 35,
     "default_hp": 70,
     "max_speed_kmh": 700,
+    "altitude_m": 7000,
+    "rcs": 12.0,
     "valid_targets": ["ground", "naval", "air"],
     "fuel_burn_per_tick": 1.2,
     "fuel_idle_per_tick": 0.2,
     "rearm_ticks": 8,
     "data_link": false,
     "loadout_presets": {
-      "strike":    { "label": "Strike (Kh-29/GBU-equiv)", "magazines": { "aa": 2, "ag": 10, "as": 0 } },
-      "anti_ship": { "label": "Anti-Ship (Kh-31A/35)",    "magazines": { "aa": 2, "ag": 2,  "as": 4 }, "weapon_km": 250 },
-      "sead":      { "label": "SEAD (Kh-31P)",            "magazines": { "aa": 4, "ag": 6,  "as": 0 } }
+      "strike":    { "label": "Strike (Kh-29)",     "magazines": { "aa": 2, "ag": 10, "as": 0 } },
+      "anti_ship": { "label": "Anti-Ship (Kh-31A)", "magazines": { "aa": 2, "ag": 2,  "as": 4 }, "weapon_km": 250 },
+      "sead":      { "label": "SEAD (Kh-31P)",      "magazines": { "aa": 4, "ag": 6,  "as": 0 } }
     },
-    "notes": "Primary strike platform. Sh-141 terrain-following radar. No compatible NATO data link."
-  },
-
-  "challenger2": {
-    "display_name": "Challenger 2 MBT (battalion)",
-    "unit_class": "ground",
-    "sensor_km": 5,
-    "weapon_km": 3,
-    "attack_per_tick": 20,
-    "default_hp": 120,
-    "max_speed_kmh": 30,
-    "valid_targets": ["ground"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.02,
-    "rearm_ticks": 5,
-    "data_link": false,
-    "loadout_presets": {
-      "standard": { "label": "CHARM-3 Sabot / HESH", "magazines": { "ag": 30 } }
-    },
-    "notes": "L30A1 120mm rifled gun, CHARM-3 APFSDS effective ~3km. TOGS-2 thermal imager gives night capability."
-  },
-
-  "t80u": {
-    "display_name": "T-80U MBT (battalion)",
-    "unit_class": "ground",
-    "sensor_km": 4,
-    "weapon_km": 2,
-    "attack_per_tick": 18,
-    "default_hp": 110,
-    "max_speed_kmh": 35,
-    "valid_targets": ["ground"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.02,
-    "rearm_ticks": 5,
-    "data_link": false,
-    "loadout_presets": {
-      "standard": { "label": "125mm AP / 9M119 ATGM", "magazines": { "ag": 28 } }
-    },
-    "notes": "2A46M-1 125mm smoothbore, 9M119 Svir ATGM through barrel ~5km. Kontakt-5 ERA."
-  },
-
-  "leopard2a6": {
-    "display_name": "Leopard 2A6 MBT (battalion)",
-    "unit_class": "ground",
-    "sensor_km": 5,
-    "weapon_km": 4,
-    "attack_per_tick": 22,
-    "default_hp": 125,
-    "max_speed_kmh": 32,
-    "valid_targets": ["ground"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.02,
-    "rearm_ticks": 5,
-    "data_link": false,
-    "loadout_presets": {
-      "standard": { "label": "DM53 APFSDS (120mm L55)", "magazines": { "ag": 32 } }
-    },
-    "notes": "Rh-120/L55 gun fires DM53 APFSDS, ~4km effective. PERI R17A2 commander sight with independent thermal."
-  },
-
-  "infantry_mech": {
-    "display_name": "Mechanised Infantry Battalion",
-    "unit_class": "ground",
-    "sensor_km": 4,
-    "weapon_km": 3,
-    "attack_per_tick": 15,
-    "default_hp": 100,
-    "max_speed_kmh": 55,
-    "valid_targets": ["ground"],
-    "fuel_burn_per_tick": 0.08,
-    "fuel_idle_per_tick": 0.01,
-    "rearm_ticks": 5,
-    "data_link": false,
-    "loadout_presets": {
-      "standard": { "label": "ATGM / IFV Cannon / Mortar", "magazines": { "ag": 20 } }
-    },
-    "notes": "~600 troops in IFVs. Milan/Javelin ATGMs ~3-4km. Organic 120mm mortars."
-  },
-
-  "infantry_light": {
-    "display_name": "Light Infantry Battalion",
-    "unit_class": "ground",
-    "sensor_km": 3,
-    "weapon_km": 1,
-    "attack_per_tick": 10,
-    "default_hp": 90,
-    "max_speed_kmh": 8,
-    "valid_targets": ["ground"],
-    "fuel_burn_per_tick": 0.05,
-    "fuel_idle_per_tick": 0.005,
-    "rearm_ticks": 5,
-    "data_link": false,
-    "loadout_presets": {
-      "standard": { "label": "Small Arms / NLAW / Javelin", "magazines": { "ag": 15 } }
-    },
-    "notes": "~700 troops foot-mobile. Small arms 300m effective. NLAW/AT-4 ~600m. Javelin ~2.5km."
-  },
-
-  "vdv_btg": {
-    "display_name": "VDV Airborne BTG",
-    "unit_class": "ground",
-    "sensor_km": 3,
-    "weapon_km": 2,
-    "attack_per_tick": 14,
-    "default_hp": 95,
-    "max_speed_kmh": 60,
-    "valid_targets": ["ground"],
-    "fuel_burn_per_tick": 0.08,
-    "fuel_idle_per_tick": 0.01,
-    "rearm_ticks": 5,
-    "data_link": false,
-    "loadout_presets": {
-      "standard": { "label": "Kornet ATGM / Igla-S MANPADS", "magazines": { "ag": 15, "aa": 4 } }
-    },
-    "notes": "~700 troops in BMD-4M/BTR-MDM. Kornet ATGM ~5km. 9K338 Igla-S MANPADS for self-defence."
-  },
-
-  "himars": {
-    "display_name": "M142 HIMARS (battalion)",
-    "unit_class": "ground",
-    "sensor_km": 15,
-    "weapon_km": 70,
-    "attack_per_tick": 38,
-    "default_hp": 70,
-    "max_speed_kmh": 70,
-    "valid_targets": ["ground", "naval"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.01,
-    "rearm_ticks": 6,
-    "data_link": true,
-    "loadout_presets": {
-      "gmlrs":  { "label": "GMLRS (70 km)",  "magazines": { "ag": 6, "as": 2 } },
-      "atacms": { "label": "ATACMS (165 km)", "magazines": { "ag": 3, "as": 0 }, "weapon_km": 165 }
-    },
-    "notes": "M30A1 GMLRS ~70km GPS/INS guided. ATACMS ~165km. AFATDS data link — fires on coordinates from network-shared targeting (F-35, Patriot radar, naval sensor)."
-  },
-
-  "mlrs_m270": {
-    "display_name": "M270 MLRS (battalion)",
-    "unit_class": "ground",
-    "sensor_km": 12,
-    "weapon_km": 70,
-    "attack_per_tick": 42,
-    "default_hp": 75,
-    "max_speed_kmh": 50,
-    "valid_targets": ["ground", "naval"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.01,
-    "rearm_ticks": 6,
-    "data_link": true,
-    "loadout_presets": {
-      "gmlrs":  { "label": "GMLRS x12 (70 km)",  "magazines": { "ag": 12, "as": 4 } },
-      "atacms": { "label": "ATACMS x6 (165 km)", "magazines": { "ag": 6,  "as": 0 }, "weapon_km": 165 }
-    },
-    "notes": "Dual-pod: 12x M30/31 GMLRS or 2x ATACMS. AFATDS data link — higher volume than HIMARS."
-  },
-
-  "iskander_m": {
-    "display_name": "9K720 Iskander-M (brigade)",
-    "unit_class": "ground",
-    "sensor_km": 20,
-    "weapon_km": 120,
-    "attack_per_tick": 45,
-    "default_hp": 80,
-    "max_speed_kmh": 70,
-    "valid_targets": ["ground", "naval"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.01,
-    "rearm_ticks": 10,
-    "data_link": false,
-    "loadout_presets": {
-      "strike": { "label": "9M723 Quasi-Ballistic", "magazines": { "ag": 4, "as": 0 } },
-      "cruise": { "label": "9M729 Cruise Variant",  "magazines": { "ag": 6, "as": 0 } }
-    },
-    "notes": "9M723-1 quasi-ballistic missile ~500km. No compatible NATO data link — uses organic sensors and pre-planned target coordinates."
-  },
-
-  "patriot_pac3": {
-    "display_name": "Patriot PAC-3 (battery)",
-    "unit_class": "ground",
-    "sensor_km": 200,
-    "weapon_km": 70,
-    "attack_per_tick": 30,
-    "default_hp": 85,
-    "max_speed_kmh": 0,
-    "valid_targets": ["air"],
-    "fuel_burn_per_tick": 0.0,
-    "fuel_idle_per_tick": 0.03,
-    "rearm_ticks": 15,
-    "data_link": true,
-    "loadout_presets": {
-      "aaw": { "label": "PAC-3 MSE x16", "magazines": { "aa": 16 } }
-    },
-    "notes": "AN/MPQ-65 radar, 180° coverage. PAC-3 MSE hit-to-kill. IBCS / Link-16 data link — contributes radar picture to network and receives cueing from airborne sensors."
-  },
-
-  "s300v4": {
-    "display_name": "S-300V4 (battalion)",
-    "unit_class": "ground",
-    "sensor_km": 300,
-    "weapon_km": 200,
-    "attack_per_tick": 35,
-    "default_hp": 90,
-    "max_speed_kmh": 0,
-    "valid_targets": ["air"],
-    "fuel_burn_per_tick": 0.0,
-    "fuel_idle_per_tick": 0.03,
-    "rearm_ticks": 20,
-    "data_link": false,
-    "loadout_presets": {
-      "aaw": { "label": "9M82MV x24 (200 km)", "magazines": { "aa": 24 } }
-    },
-    "notes": "9M82MV missile 200km vs aircraft/cruise/TBM. 9S32M radar. No compatible NATO data link."
-  },
-
-  "buk_m3": {
-    "display_name": "9K317M Buk-M3 (battery)",
-    "unit_class": "ground",
-    "sensor_km": 120,
-    "weapon_km": 70,
-    "attack_per_tick": 25,
-    "default_hp": 80,
-    "max_speed_kmh": 65,
-    "valid_targets": ["air"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.02,
-    "rearm_ticks": 12,
-    "data_link": false,
-    "loadout_presets": {
-      "aaw": { "label": "9M317M x18", "magazines": { "aa": 18 } }
-    },
-    "notes": "9M317M missile ~70km vs aircraft. 9S36 passive phased array. No compatible NATO data link."
-  },
-
-  "pantsir_s1": {
-    "display_name": "Pantsir-S1 (battery)",
-    "unit_class": "ground",
-    "sensor_km": 40,
-    "weapon_km": 20,
-    "attack_per_tick": 20,
-    "default_hp": 70,
-    "max_speed_kmh": 65,
-    "valid_targets": ["air"],
-    "fuel_burn_per_tick": 0.1,
-    "fuel_idle_per_tick": 0.02,
-    "rearm_ticks": 8,
-    "data_link": false,
-    "loadout_presets": {
-      "shorad": { "label": "57E6 x12 + 30mm Auto", "magazines": { "aa": 12 } }
-    },
-    "notes": "Short-range SHORAD. No compatible NATO data link."
-  },
-
-  "nasams": {
-    "display_name": "NASAMS (battery)",
-    "unit_class": "ground",
-    "sensor_km": 120,
-    "weapon_km": 50,
-    "attack_per_tick": 22,
-    "default_hp": 75,
-    "max_speed_kmh": 0,
-    "valid_targets": ["air"],
-    "fuel_burn_per_tick": 0.0,
-    "fuel_idle_per_tick": 0.02,
-    "rearm_ticks": 15,
-    "data_link": true,
-    "loadout_presets": {
-      "aaw": { "label": "AIM-120 / AIM-9X x12", "magazines": { "aa": 12 } }
-    },
-    "notes": "Fires AIM-120C/D AMRAAM and AIM-9X. AN/MPQ-64F1 Sentinel radar. Networked by design — receives remote fire control data from Link-16/IBCS network."
-  },
-
-  "frigate_hnlms": {
-    "display_name": "HNLMS De Ruyter F803 (LCF frigate)",
-    "unit_class": "naval",
-    "sensor_km": 250,
-    "weapon_km": 90,
-    "attack_per_tick": 25,
-    "default_hp": 150,
-    "max_speed_kmh": 55,
-    "valid_targets": ["naval", "ground", "air"],
-    "fuel_burn_per_tick": 0.2,
-    "fuel_idle_per_tick": 0.05,
-    "rearm_ticks": 12,
-    "data_link": true,
-    "loadout_presets": {
-      "aaw_focus":  { "label": "AAW (SM-2 MR)",       "magazines": { "aa": 24, "ag": 4,  "as": 4 } },
-      "strike":     { "label": "Strike",              "magazines": { "aa": 8,  "ag": 12, "as": 4 } },
-      "anti_ship":  { "label": "Anti-Ship (Harpoon)", "magazines": { "aa": 8,  "ag": 4,  "as": 8 }, "weapon_km": 280 }
-    },
-    "notes": "SMART-L 3D D-band radar ~400km vs TBM, ~250km vs fighter-RCS aircraft. Mk41 VLS: SM-2 MR ~90km AAW, ESSM quad-packed. Harpoon Block II anti-ship 280km. Link-16 / SEWACO."
-  },
-
-  "destroyer_arleigh": {
-    "display_name": "Arleigh Burke DDG",
-    "unit_class": "naval",
-    "sensor_km": 320,
-    "weapon_km": 167,
-    "attack_per_tick": 30,
-    "default_hp": 160,
-    "max_speed_kmh": 55,
-    "valid_targets": ["naval", "ground", "air"],
-    "fuel_burn_per_tick": 0.2,
-    "fuel_idle_per_tick": 0.05,
-    "rearm_ticks": 12,
-    "data_link": true,
-    "loadout_presets": {
-      "aaw_focus": { "label": "AAW (SM-6 ERAM)",     "magazines": { "aa": 32, "ag": 8,  "as": 4  }, "weapon_km": 370 },
-      "strike":    { "label": "Strike (Tomahawk)",   "magazines": { "aa": 8,  "ag": 20, "as": 4  }, "weapon_km": 1500 },
-      "anti_ship": { "label": "Anti-Ship (Harpoon)", "magazines": { "aa": 12, "ag": 4,  "as": 12 }, "weapon_km": 280 }
-    },
-    "notes": "AN/SPY-1D(V) Aegis phased array ~320km vs fighter-RCS (maximum bubble, altitude effects TBD). SM-2 IIIB 167km base; SM-6 ERAM 370km (aaw_focus); Tomahawk LACM 1500km (strike); Harpoon 280km (anti_ship). Link-16 primary network node."
-  },
-
-  "slava_cg": {
-    "display_name": "Slava-class Cruiser (CG)",
-    "unit_class": "naval",
-    "sensor_km": 250,
-    "weapon_km": 90,
-    "attack_per_tick": 35,
-    "default_hp": 200,
-    "max_speed_kmh": 55,
-    "valid_targets": ["naval", "ground", "air"],
-    "fuel_burn_per_tick": 0.18,
-    "fuel_idle_per_tick": 0.05,
-    "rearm_ticks": 15,
-    "data_link": false,
-    "loadout_presets": {
-      "anti_ship": { "label": "P-1000 Vulkan ASM x16", "magazines": { "aa": 16, "ag": 4, "as": 16 }, "weapon_km": 550 },
-      "aaw_focus": { "label": "S-300F Rif-M AAW",      "magazines": { "aa": 32, "ag": 4, "as": 8  }, "weapon_km": 90  }
-    },
-    "notes": "MR-800 Top Pair + MR-600 Voskhod 3D radars ~250km vs aircraft (maximum bubble, altitude effects TBD). 16x P-1000 Vulkan ASM 550km (anti_ship); S-300F Rif-M 90km AAW (aaw_focus). No compatible NATO data link."
-  },
-
-  "submarine_ula": {
-    "display_name": "Ula-class SSK (Norway)",
-    "unit_class": "naval",
-    "sensor_km": 80,
-    "weapon_km": 50,
-    "attack_per_tick": 30,
-    "default_hp": 90,
-    "max_speed_kmh": 35,
-    "valid_targets": ["naval"],
-    "fuel_burn_per_tick": 0.15,
-    "fuel_idle_per_tick": 0.03,
-    "rearm_ticks": 20,
-    "data_link": false,
-    "loadout_presets": {
-      "asuw": { "label": "DM2A4 Torpedoes x8", "magazines": { "as": 8 } }
-    },
-    "notes": "Type 212 hull, AIP propulsion. DM2A4 heavyweight torpedo ~50km. Submerged — cannot participate in data link network."
+    "notes": "Primary strike platform. No data link. RCS ~12m² (slightly reduced vs Su-27 but still large)."
   },
 
   "a10c": {
@@ -487,6 +149,8 @@
     "attack_per_tick": 35,
     "default_hp": 65,
     "max_speed_kmh": 350,
+    "altitude_m": 2000,
+    "rcs": 8.0,
     "valid_targets": ["ground", "naval"],
     "fuel_burn_per_tick": 0.8,
     "fuel_idle_per_tick": 0.15,
@@ -496,7 +160,7 @@
       "cas_heavy":    { "label": "CAS Heavy (Maverick/Mk82)", "magazines": { "aa": 0, "ag": 10, "as": 0 } },
       "sead_support": { "label": "SEAD Support",             "magazines": { "aa": 2, "ag": 6,  "as": 0 } }
     },
-    "notes": "GAU-8 Avenger 30mm rotary. AGM-65H Maverick EO/IIR ~22km. SADL data link — receives target cueing from network."
+    "notes": "GAU-8 rotary. SADL data link. Flies low for CAS — altitude_m 2000 typical. RCS ~8m² (large, no LO)."
   },
 
   "su25": {
@@ -507,6 +171,8 @@
     "attack_per_tick": 30,
     "default_hp": 58,
     "max_speed_kmh": 400,
+    "altitude_m": 1500,
+    "rcs": 6.0,
     "valid_targets": ["ground", "naval"],
     "fuel_burn_per_tick": 0.9,
     "fuel_idle_per_tick": 0.15,
@@ -516,6 +182,534 @@
       "cas_heavy":  { "label": "CAS Heavy (Kh-25/S-13)", "magazines": { "aa": 0, "ag": 8, "as": 0 } },
       "multi_role": { "label": "Multi-Role",             "magazines": { "aa": 2, "ag": 6, "as": 0 } }
     },
-    "notes": "Kh-25ML laser ~10km, S-13 rockets. No data link. Extremely vulnerable to MANPADS and medium SAMs."
+    "notes": "Low-level CAS. No data link. RCS ~6m²."
+  },
+
+  "challenger2": {
+    "display_name": "Challenger 2 MBT (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 5,
+    "weapon_km": 3,
+    "attack_per_tick": 20,
+    "default_hp": 120,
+    "max_speed_kmh": 30,
+    "altitude_m": 50,
+    "rcs": 50.0,
+    "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 5,
+    "data_link": false,
+    "loadout_presets": {
+      "standard": { "label": "CHARM-3 Sabot / HESH", "magazines": { "ag": 30 } }
+    },
+    "notes": "L30A1 120mm. TOGS-2 thermal. RCS ~50m² (large metal hull)."
+  },
+
+  "t80u": {
+    "display_name": "T-80U MBT (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 4,
+    "weapon_km": 2,
+    "attack_per_tick": 18,
+    "default_hp": 110,
+    "max_speed_kmh": 35,
+    "altitude_m": 50,
+    "rcs": 40.0,
+    "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 5,
+    "data_link": false,
+    "loadout_presets": {
+      "standard": { "label": "125mm AP / 9M119 ATGM", "magazines": { "ag": 28 } }
+    },
+    "notes": "2A46M-1. Kontakt-5 ERA. RCS ~40m²."
+  },
+
+  "leopard2a6": {
+    "display_name": "Leopard 2A6 MBT (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 5,
+    "weapon_km": 4,
+    "attack_per_tick": 22,
+    "default_hp": 125,
+    "max_speed_kmh": 32,
+    "altitude_m": 50,
+    "rcs": 50.0,
+    "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 5,
+    "data_link": false,
+    "loadout_presets": {
+      "standard": { "label": "DM53 APFSDS (120mm L55)", "magazines": { "ag": 32 } }
+    },
+    "notes": "Rh-120/L55. PERI R17A2 thermal. RCS ~50m²."
+  },
+
+  "infantry_mech": {
+    "display_name": "Mechanised Infantry Battalion",
+    "unit_class": "ground",
+    "sensor_km": 4,
+    "weapon_km": 3,
+    "attack_per_tick": 15,
+    "default_hp": 100,
+    "max_speed_kmh": 55,
+    "altitude_m": 20,
+    "rcs": 10.0,
+    "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.08,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 5,
+    "data_link": false,
+    "loadout_presets": {
+      "standard": { "label": "ATGM / IFV Cannon / Mortar", "magazines": { "ag": 20 } }
+    },
+    "notes": "IFVs dispersed. RCS ~10m² (dispersed, mixed metal/fabric)."
+  },
+
+  "infantry_light": {
+    "display_name": "Light Infantry Battalion",
+    "unit_class": "ground",
+    "sensor_km": 3,
+    "weapon_km": 1,
+    "attack_per_tick": 10,
+    "default_hp": 90,
+    "max_speed_kmh": 8,
+    "altitude_m": 5,
+    "rcs": 1.0,
+    "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.05,
+    "fuel_idle_per_tick": 0.005,
+    "rearm_ticks": 5,
+    "data_link": false,
+    "loadout_presets": {
+      "standard": { "label": "Small Arms / NLAW / Javelin", "magazines": { "ag": 15 } }
+    },
+    "notes": "Foot mobile, dispersed. RCS ~1m² (small, scattered)."
+  },
+
+  "vdv_btg": {
+    "display_name": "VDV Airborne BTG",
+    "unit_class": "ground",
+    "sensor_km": 3,
+    "weapon_km": 2,
+    "attack_per_tick": 14,
+    "default_hp": 95,
+    "max_speed_kmh": 60,
+    "altitude_m": 20,
+    "rcs": 8.0,
+    "valid_targets": ["ground"],
+    "fuel_burn_per_tick": 0.08,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 5,
+    "data_link": false,
+    "loadout_presets": {
+      "standard": { "label": "Kornet ATGM / Igla-S MANPADS", "magazines": { "ag": 15, "aa": 4 } }
+    },
+    "notes": "BMD-4M/BTR-MDM. RCS ~8m² (light vehicles dispersed)."
+  },
+
+  "himars": {
+    "display_name": "M142 HIMARS (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 15,
+    "weapon_km": 70,
+    "attack_per_tick": 38,
+    "default_hp": 70,
+    "max_speed_kmh": 70,
+    "altitude_m": 50,
+    "rcs": 20.0,
+    "valid_targets": ["ground", "naval"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 6,
+    "data_link": true,
+    "loadout_presets": {
+      "gmlrs":  { "label": "GMLRS (70 km)",  "magazines": { "ag": 6, "as": 2 } },
+      "atacms": { "label": "ATACMS (165 km)", "magazines": { "ag": 3, "as": 0 }, "weapon_km": 165 }
+    },
+    "notes": "M30A1 GMLRS. AFATDS data link. RCS ~20m² (truck-mounted launcher)."
+  },
+
+  "mlrs_m270": {
+    "display_name": "M270 MLRS (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 12,
+    "weapon_km": 70,
+    "attack_per_tick": 42,
+    "default_hp": 75,
+    "max_speed_kmh": 50,
+    "altitude_m": 50,
+    "rcs": 25.0,
+    "valid_targets": ["ground", "naval"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 6,
+    "data_link": true,
+    "loadout_presets": {
+      "gmlrs":  { "label": "GMLRS x12 (70 km)",  "magazines": { "ag": 12, "as": 4 } },
+      "atacms": { "label": "ATACMS x6 (165 km)", "magazines": { "ag": 6,  "as": 0 }, "weapon_km": 165 }
+    },
+    "notes": "Dual-pod launcher. AFATDS data link. RCS ~25m² (tracked vehicle, larger than HIMARS)."
+  },
+
+  "iskander_m": {
+    "display_name": "9K720 Iskander-M (brigade)",
+    "unit_class": "ground",
+    "sensor_km": 20,
+    "weapon_km": 120,
+    "attack_per_tick": 45,
+    "default_hp": 80,
+    "max_speed_kmh": 70,
+    "altitude_m": 50,
+    "rcs": 25.0,
+    "valid_targets": ["ground", "naval"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.01,
+    "rearm_ticks": 10,
+    "data_link": false,
+    "loadout_presets": {
+      "strike": { "label": "9M723 Quasi-Ballistic", "magazines": { "ag": 4, "as": 0 } },
+      "cruise": { "label": "9M729 Cruise Variant",  "magazines": { "ag": 6, "as": 0 } }
+    },
+    "notes": "TEL vehicle. No NATO data link. RCS ~25m²."
+  },
+
+  "patriot_pac3": {
+    "display_name": "Patriot PAC-3 (battery)",
+    "unit_class": "ground",
+    "sensor_km": 200,
+    "weapon_km": 70,
+    "attack_per_tick": 30,
+    "default_hp": 85,
+    "max_speed_kmh": 0,
+    "altitude_m": 20,
+    "rcs": 200.0,
+    "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.0,
+    "fuel_idle_per_tick": 0.03,
+    "rearm_ticks": 15,
+    "data_link": true,
+    "loadout_presets": {
+      "aaw": { "label": "PAC-3 MSE x16", "magazines": { "aa": 16 } }
+    },
+    "notes": "AN/MPQ-65 radar. IBCS/Link-16. RCS ~200m² (large radar + vehicles emplaced)."
+  },
+
+  "s300v4": {
+    "display_name": "S-300V4 (battalion)",
+    "unit_class": "ground",
+    "sensor_km": 300,
+    "weapon_km": 200,
+    "attack_per_tick": 35,
+    "default_hp": 90,
+    "max_speed_kmh": 0,
+    "altitude_m": 25,
+    "rcs": 300.0,
+    "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.0,
+    "fuel_idle_per_tick": 0.03,
+    "rearm_ticks": 20,
+    "data_link": false,
+    "loadout_presets": {
+      "aaw": { "label": "9M82MV x24 (200 km)", "magazines": { "aa": 24 } }
+    },
+    "notes": "9S32M radar. No NATO data link. RCS ~300m² (large emplaced system)."
+  },
+
+  "buk_m3": {
+    "display_name": "9K317M Buk-M3 (battery)",
+    "unit_class": "ground",
+    "sensor_km": 120,
+    "weapon_km": 70,
+    "attack_per_tick": 25,
+    "default_hp": 80,
+    "max_speed_kmh": 65,
+    "altitude_m": 50,
+    "rcs": 50.0,
+    "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 12,
+    "data_link": false,
+    "loadout_presets": {
+      "aaw": { "label": "9M317M x18", "magazines": { "aa": 18 } }
+    },
+    "notes": "9S36 passive phased array. No NATO data link. RCS ~50m²."
+  },
+
+  "pantsir_s1": {
+    "display_name": "Pantsir-S1 (battery)",
+    "unit_class": "ground",
+    "sensor_km": 40,
+    "weapon_km": 20,
+    "attack_per_tick": 20,
+    "default_hp": 70,
+    "max_speed_kmh": 65,
+    "altitude_m": 50,
+    "rcs": 30.0,
+    "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 8,
+    "data_link": false,
+    "loadout_presets": {
+      "shorad": { "label": "57E6 x12 + 30mm Auto", "magazines": { "aa": 12 } }
+    },
+    "notes": "SHORAD. No NATO data link. RCS ~30m²."
+  },
+
+  "nasams": {
+    "display_name": "NASAMS (battery)",
+    "unit_class": "ground",
+    "sensor_km": 120,
+    "weapon_km": 50,
+    "attack_per_tick": 22,
+    "default_hp": 75,
+    "max_speed_kmh": 0,
+    "altitude_m": 15,
+    "rcs": 100.0,
+    "valid_targets": ["air"],
+    "fuel_burn_per_tick": 0.0,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 15,
+    "data_link": true,
+    "loadout_presets": {
+      "aaw": { "label": "AIM-120 / AIM-9X x12", "magazines": { "aa": 12 } }
+    },
+    "notes": "AN/MPQ-64F1 Sentinel. Link-16/IBCS. RCS ~100m² (distributed battery)."
+  },
+
+  "frigate_hnlms": {
+    "display_name": "HNLMS De Ruyter F803 (LCF frigate)",
+    "unit_class": "naval",
+    "sensor_km": 250,
+    "weapon_km": 90,
+    "attack_per_tick": 25,
+    "default_hp": 150,
+    "max_speed_kmh": 55,
+    "altitude_m": 35,
+    "rcs": 3000.0,
+    "valid_targets": ["naval", "ground", "air"],
+    "fuel_burn_per_tick": 0.2,
+    "fuel_idle_per_tick": 0.05,
+    "rearm_ticks": 12,
+    "data_link": true,
+    "loadout_presets": {
+      "aaw_focus":  { "label": "AAW (SM-2 MR)",       "magazines": { "aa": 24, "ag": 4,  "as": 4 } },
+      "strike":     { "label": "Strike",               "magazines": { "aa": 8,  "ag": 12, "as": 4 } },
+      "anti_ship":  { "label": "Anti-Ship (Harpoon)",  "magazines": { "aa": 8,  "ag": 4,  "as": 8 }, "weapon_km": 280 }
+    },
+    "notes": "SMART-L D-band radar ~250km vs aircraft. Mk41 VLS SM-2 MR 90km. Link-16/SEWACO. RCS ~3000m² (frigate hull)."
+  },
+
+  "destroyer_arleigh": {
+    "display_name": "Arleigh Burke DDG",
+    "unit_class": "naval",
+    "sensor_km": 320,
+    "weapon_km": 167,
+    "attack_per_tick": 30,
+    "default_hp": 160,
+    "max_speed_kmh": 55,
+    "altitude_m": 30,
+    "rcs": 5000.0,
+    "valid_targets": ["naval", "ground", "air"],
+    "fuel_burn_per_tick": 0.2,
+    "fuel_idle_per_tick": 0.05,
+    "rearm_ticks": 12,
+    "data_link": true,
+    "loadout_presets": {
+      "aaw_focus": { "label": "AAW (SM-6 ERAM)",    "magazines": { "aa": 32, "ag": 8,  "as": 4  }, "weapon_km": 370 },
+      "strike":    { "label": "Strike (Tomahawk)",  "magazines": { "aa": 8,  "ag": 20, "as": 4  }, "weapon_km": 1500 },
+      "anti_ship": { "label": "Anti-Ship (Harpoon)","magazines": { "aa": 12, "ag": 4,  "as": 12 }, "weapon_km": 280 }
+    },
+    "notes": "AN/SPY-1D Aegis ~320km vs aircraft. SM-6 370km. Tomahawk 1500km. Link-16. RCS ~5000m² (DDG hull)."
+  },
+
+  "slava_cg": {
+    "display_name": "Slava-class Cruiser (CG)",
+    "unit_class": "naval",
+    "sensor_km": 250,
+    "weapon_km": 90,
+    "attack_per_tick": 35,
+    "default_hp": 200,
+    "max_speed_kmh": 55,
+    "altitude_m": 35,
+    "rcs": 8000.0,
+    "valid_targets": ["naval", "ground", "air"],
+    "fuel_burn_per_tick": 0.18,
+    "fuel_idle_per_tick": 0.05,
+    "rearm_ticks": 15,
+    "data_link": false,
+    "loadout_presets": {
+      "anti_ship": { "label": "P-1000 Vulkan ASM x16", "magazines": { "aa": 16, "ag": 4, "as": 16 }, "weapon_km": 550 },
+      "aaw_focus": { "label": "S-300F Rif-M AAW",      "magazines": { "aa": 32, "ag": 4, "as": 8  }, "weapon_km": 90  }
+    },
+    "notes": "Top Pair + Voskhod 3D radars ~250km. P-1000 Vulkan 550km. No NATO data link. RCS ~8000m² (large cruiser)."
+  },
+
+  "e3g_awacs": {
+    "display_name": "E-3G Sentry AWACS",
+    "unit_class": "air",
+    "sensor_km": 450,
+    "sensor_arc_deg": 360,
+    "weapon_km": 0,
+    "attack_per_tick": 0,
+    "default_hp": 50,
+    "max_speed_kmh": 600,
+    "altitude_m": 9000,
+    "rcs": 200.0,
+    "valid_targets": [],
+    "fuel_burn_per_tick": 1.0,
+    "fuel_idle_per_tick": 0.12,
+    "rearm_ticks": 8,
+    "data_link": true,
+    "is_surveillance": true,
+    "loadout_presets": {
+      "standard": { "label": "Surveillance (unarmed)", "magazines": {} }
+    },
+    "notes": "AN/APY-2 rotating radar 450km. Unarmed — flees air threats, extends Link-16 picture. Requires fighter escort."
+  },
+
+  "e7_wedgetail": {
+    "display_name": "E-7A Wedgetail AEW&C",
+    "unit_class": "air",
+    "sensor_km": 500,
+    "sensor_arc_deg": 300,
+    "sensor_bi_cone": true,
+    "weapon_km": 0,
+    "attack_per_tick": 0,
+    "default_hp": 52,
+    "max_speed_kmh": 650,
+    "altitude_m": 9500,
+    "rcs": 150.0,
+    "valid_targets": [],
+    "fuel_burn_per_tick": 0.9,
+    "fuel_idle_per_tick": 0.12,
+    "rearm_ticks": 8,
+    "data_link": true,
+    "is_surveillance": true,
+    "loadout_presets": {
+      "standard": { "label": "Surveillance (unarmed)", "magazines": {} }
+    },
+    "notes": "MESA AESA radar 500km. Most capable AEW&C in NATO inventory. Unarmed — requires escort."
+  },
+
+  "a50u": {
+    "display_name": "A-50U Mainstay AEW&C",
+    "unit_class": "air",
+    "sensor_km": 350,
+    "sensor_arc_deg": 360,
+    "weapon_km": 0,
+    "attack_per_tick": 0,
+    "default_hp": 50,
+    "max_speed_kmh": 600,
+    "altitude_m": 9000,
+    "rcs": 250.0,
+    "valid_targets": [],
+    "fuel_burn_per_tick": 1.1,
+    "fuel_idle_per_tick": 0.15,
+    "rearm_ticks": 10,
+    "data_link": false,
+    "is_surveillance": true,
+    "loadout_presets": {
+      "standard": { "label": "Surveillance (unarmed)", "magazines": {} }
+    },
+    "notes": "Shmel-M radar on Il-76 platform. Russian equivalent of E-3. No NATO data link. Requires Su-27/Su-30 escort."
+  },
+
+  "p8a_poseidon": {
+    "display_name": "P-8A Poseidon MPA",
+    "unit_class": "air",
+    "sensor_km": 200,
+    "sensor_arc_deg": 270,
+    "sensor_bi_cone": true,
+    "weapon_km": 200,
+    "attack_per_tick": 20,
+    "default_hp": 48,
+    "max_speed_kmh": 700,
+    "altitude_m": 3000,
+    "rcs": 30.0,
+    "valid_targets": ["naval"],
+    "fuel_burn_per_tick": 1.0,
+    "fuel_idle_per_tick": 0.12,
+    "rearm_ticks": 8,
+    "data_link": true,
+    "is_surveillance": true,
+    "loadout_presets": {
+      "anti_ship":  { "label": "Anti-Ship (Harpoon/JSM)", "magazines": { "as": 6 }, "weapon_km": 200 },
+      "asw":        { "label": "ASW (Mk54 / MK54 Torpedo)", "magazines": { "as": 4 } }
+    },
+    "notes": "AN/APY-10 radar. Harpoon 200km. Flees air threats. ASW torpedo attack vs submarines on roadmap."
+  },
+
+  "il38n": {
+    "display_name": "Il-38N May MPA",
+    "unit_class": "air",
+    "sensor_km": 150,
+    "sensor_arc_deg": 270,
+    "sensor_bi_cone": true,
+    "weapon_km": 80,
+    "attack_per_tick": 18,
+    "default_hp": 45,
+    "max_speed_kmh": 620,
+    "altitude_m": 2500,
+    "rcs": 35.0,
+    "valid_targets": ["naval"],
+    "fuel_burn_per_tick": 1.0,
+    "fuel_idle_per_tick": 0.12,
+    "rearm_ticks": 10,
+    "data_link": false,
+    "is_surveillance": true,
+    "loadout_presets": {
+      "anti_ship": { "label": "Anti-Ship (Kh-35U)", "magazines": { "as": 4 }, "weapon_km": 130 },
+      "asw":       { "label": "ASW (APR-3 Torpedo)", "magazines": { "as": 3 } }
+    },
+    "notes": "Leninets Novella-P38 system. Russian maritime patrol. Flees air threats. No NATO data link."
+  },
+
+  "merchant_vessel": {
+    "display_name": "Merchant / Cargo Vessel",
+    "unit_class": "naval",
+    "sensor_km": 20,
+    "weapon_km": 0,
+    "attack_per_tick": 0,
+    "default_hp": 250,
+    "max_speed_kmh": 28,
+    "altitude_m": 10,
+    "rcs": 20000.0,
+    "valid_targets": [],
+    "fuel_burn_per_tick": 0.1,
+    "fuel_idle_per_tick": 0.02,
+    "rearm_ticks": 0,
+    "data_link": false,
+    "is_surveillance": false,
+    "loadout_presets": {
+      "standard": { "label": "Cargo (unarmed)", "magazines": {} }
+    },
+    "notes": "Bulk carrier / container ship. Unarmed. Large RCS (20000m²). Assign naval or air escort for protection."
+  },
+
+  "submarine_ula": {
+    "display_name": "Ula-class SSK (Norway)",
+    "unit_class": "naval",
+    "sensor_km": 80,
+    "weapon_km": 50,
+    "attack_per_tick": 30,
+    "default_hp": 90,
+    "max_speed_kmh": 35,
+    "altitude_m": 5,
+    "rcs": 50.0,
+    "valid_targets": ["naval"],
+    "fuel_burn_per_tick": 0.15,
+    "fuel_idle_per_tick": 0.03,
+    "rearm_ticks": 20,
+    "data_link": false,
+    "loadout_presets": {
+      "asuw": { "label": "DM2A4 Torpedoes x8", "magazines": { "as": 8 } }
+    },
+    "notes": "Type 212 AIP. Passive sonar dominant. Altitude = periscope/snorkel height. RCS ~50m² (small surfaced profile)."
   }
 }

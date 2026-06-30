@@ -21,6 +21,7 @@ class MissionType(str, Enum):
     AREA_PATROL = "area_patrol"
     INTERCEPT = "intercept"
     RTB = "rtb"
+    ESCORT = "escort"
 
 
 class MissionStatus(str, Enum):
@@ -31,8 +32,9 @@ class MissionStatus(str, Enum):
 class Mission(BaseModel):
     type: MissionType
     objective_id: Optional[str] = None
-    patrol_lat: Optional[float] = None   # area_patrol center (no objective needed)
+    patrol_lat: Optional[float] = None    # area_patrol center
     patrol_lon: Optional[float] = None
+    target_unit_id: Optional[str] = None  # escort target unit id
     status: MissionStatus = MissionStatus.EN_ROUTE
 
 
@@ -65,4 +67,10 @@ class Unit(BaseModel):
     rearm_ticks_left: int = 0
     previous_mission: Optional[Mission] = None  # restored after RTB/rearm completes
     data_link: bool = False                      # set from unit_types.json on load
+    is_surveillance: bool = False                # AWACS/MPA: flees threats, wide sensor
+    sensor_arc_deg: Optional[int] = None        # total sensor arc in degrees (None = default cone/circle)
+    sensor_bi_cone: bool = False                # if True: two side-facing arcs with dead zones fore/aft (MESA/side-look)
     weapon_km_override: Optional[float] = None  # set by loadout preset (e.g. ATACMS)
+    altitude_m: float = 100.0    # typical operating altitude (m); stamped from library
+    rcs: float = 5.0             # radar cross-section (m²); stamped from library
+    emcon: bool = True           # True = actively emitting (radar on); False = silent/passive

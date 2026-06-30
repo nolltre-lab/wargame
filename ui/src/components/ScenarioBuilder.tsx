@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BuilderMap } from './BuilderMap';
-import type { BuilderUnit, UnitTypeInfo, UnitClass, Objective, TheaterInfo } from '../types';
+import type { BuilderUnit, BuilderMission, MissionType, UnitTypeInfo, UnitClass, Objective, TheaterInfo } from '../types';
 import { sidcForUnit } from '../lib/milsymbol';
 
 function nearestObjective(lat: number, lon: number, objs: Objective[], types: Objective['type'][]) {
@@ -40,7 +40,6 @@ export function ScenarioBuilder({ onExit }: Props) {
   const [placedUnits, setPlacedUnits] = useState<BuilderUnit[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [objectives, setObjectives] = useState<Objective[]>([]);
-  const [maritimeCorridors, setMaritimeCorridors] = useState<number[][]>([]);
   const [scenarioName, setScenarioName] = useState('my_scenario');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
@@ -89,10 +88,16 @@ export function ScenarioBuilder({ onExit }: Props) {
         loadout:       (u.loadout as string | undefined) ?? '',
         home_base_lat: (u.home_base_lat as number | undefined) ?? null,
         home_base_lon: (u.home_base_lon as number | undefined) ?? null,
+        initial_mission: u.mission ? {
+          type:           (u.mission as Record<string, unknown>).type as MissionType,
+          objective_id:   ((u.mission as Record<string, unknown>).objective_id as string | null) ?? null,
+          patrol_lat:     ((u.mission as Record<string, unknown>).patrol_lat as number | null) ?? null,
+          patrol_lon:     ((u.mission as Record<string, unknown>).patrol_lon as number | null) ?? null,
+          target_unit_id: ((u.mission as Record<string, unknown>).target_unit_id as string | null) ?? null,
+        } : null,
       }));
       setPlacedUnits(loaded);
       setObjectives(data.objectives ?? []);
-      setMaritimeCorridors(data.maritime_corridors ?? []);
       setScenarioName(filename.replace(/\.json$/, ''));
       setSelectedId(null);
       setPlacingType(null);
@@ -106,7 +111,6 @@ export function ScenarioBuilder({ onExit }: Props) {
     try {
       const data = await fetch(`${API}/theaters/${encodeURIComponent(id)}`).then(r => r.json());
       setObjectives(data.objectives ?? []);
-      setMaritimeCorridors(data.maritime_corridors ?? []);
       setPlacedUnits([]);
       setSelectedId(null);
       setPlacingType(null);
@@ -181,6 +185,7 @@ export function ScenarioBuilder({ onExit }: Props) {
       loadout:       defaultLoadout(info),
       home_base_lat: homeBaseLat,
       home_base_lon: homeBaseLon,
+      initial_mission: null,
     };
     setPlacedUnits(prev => [...prev, unit]);
   }, [placingType, placedUnits, activeSide, unitTypes, objectives]);
@@ -221,7 +226,6 @@ export function ScenarioBuilder({ onExit }: Props) {
       name: scenarioName,
       start_time: '2024-06-15T04:00:00Z',
       tick_duration_seconds: 60,
-      maritime_corridors: maritimeCorridors,
       objectives,
       units: placedUnits.map(u => ({
         id:            u.id,
@@ -236,6 +240,16 @@ export function ScenarioBuilder({ onExit }: Props) {
         loadout:       u.loadout,
         home_base_lat: u.home_base_lat,
         home_base_lon: u.home_base_lon,
+        ...(u.initial_mission ? {
+          mission: {
+            type:           u.initial_mission.type,
+            objective_id:   u.initial_mission.objective_id,
+            patrol_lat:     u.initial_mission.patrol_lat,
+            patrol_lon:     u.initial_mission.patrol_lon,
+            target_unit_id: u.initial_mission.target_unit_id,
+            status:         'en_route',
+          },
+        } : {}),
       })),
     };
     try {
@@ -254,7 +268,7 @@ export function ScenarioBuilder({ onExit }: Props) {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  }, [scenarioName, placedUnits, objectives, maritimeCorridors]);
+  }, [scenarioName, placedUnits, objectives]);
 
   // ── Load in sim ───────────────────────────────────────────────────────────
   const loadInSim = useCallback(async () => {
@@ -530,6 +544,74 @@ export function ScenarioBuilder({ onExit }: Props) {
                     })()}
                   </div>
                 )}
+
+                {/* Starting mission picker */}
+                {(() => {
+                  const MISSION_OPTS: { value: MissionType | ''; label: string }[] = [
+                    { value: '',            label: '— none —' },
+                    { value: 'secure',      label: 'SECURE (objective)' },
+                    { value: 'defend',      label: 'DEFEND (objective)' },
+                    { value: 'patrol',      label: 'PATROL (objective)' },
+                    { value: 'area_patrol', label: 'PATROL (area — at spawn)' },
+                    { value: 'intercept',   label: 'INTERCEPT (nearest)' },
+                    { value: 'escort',      label: 'ESCORT (unit)' },
+                  ];
+                  const needsObj  = ['secure', 'defend', 'patrol'].includes(sel.initial_mission?.type ?? '');
+                  const needsUnit = sel.initial_mission?.type === 'escort';
+                  return (
+                    <div>
+                      <div style={{ fontSize: 10, color: '#4a6a8a', marginBottom: 3, letterSpacing: 1 }}>STARTING MISSION</div>
+                      <select
+                        value={sel.initial_mission?.type ?? ''}
+                        onChange={e => {
+                          const t = e.target.value as MissionType | '';
+                          setPlacedUnits(prev => prev.map(u =>
+                            u.id === selectedId
+                              ? { ...u, initial_mission: t
+                                  ? { type: t as MissionType, objective_id: null, patrol_lat: u.lat, patrol_lon: u.lon, target_unit_id: null }
+                                  : null }
+                              : u
+                          ));
+                        }}
+                        style={{ width: '100%', background: '#0a1020', border: '1px solid #1e2e4a', color: '#88bbee', ...MONO, fontSize: 11, padding: '4px 6px', marginBottom: 3 }}
+                      >
+                        {MISSION_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+
+                      {needsObj && (
+                        <select
+                          value={sel.initial_mission?.objective_id ?? ''}
+                          onChange={e => setPlacedUnits(prev => prev.map(u =>
+                            u.id === selectedId && u.initial_mission
+                              ? { ...u, initial_mission: { ...u.initial_mission!, objective_id: e.target.value || null } }
+                              : u
+                          ))}
+                          style={{ width: '100%', background: '#0a1020', border: '1px solid #1e2e4a', color: '#88bbee', ...MONO, fontSize: 11, padding: '4px 6px', marginBottom: 3 }}
+                        >
+                          <option value="">— select objective —</option>
+                          {objectives.map(o => <option key={o.id} value={o.id}>{o.name} ({o.type})</option>)}
+                        </select>
+                      )}
+
+                      {needsUnit && (
+                        <select
+                          value={sel.initial_mission?.target_unit_id ?? ''}
+                          onChange={e => setPlacedUnits(prev => prev.map(u =>
+                            u.id === selectedId && u.initial_mission
+                              ? { ...u, initial_mission: { ...u.initial_mission!, target_unit_id: e.target.value || null } }
+                              : u
+                          ))}
+                          style={{ width: '100%', background: '#0a1020', border: '1px solid #1e2e4a', color: '#88bbee', ...MONO, fontSize: 11, padding: '4px 6px', marginBottom: 3 }}
+                        >
+                          <option value="">— select escort target —</option>
+                          {placedUnits.filter(u => u.id !== selectedId).map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <button onClick={deleteSelected} style={{
                   width: '100%', padding: '5px', background: '#1a0505',

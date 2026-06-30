@@ -11,6 +11,7 @@ const MISSION_LABELS: Record<MissionType, string> = {
   area_patrol: 'PATROL (area)',
   intercept:   'INTERCEPT',
   rtb:         'RTB / REARM',
+  escort:      'ESCORT (unit)',
 };
 
 const STATUS_LABELS = {
@@ -44,6 +45,7 @@ function Bar({
 export function UnitPanel({ onSend }: UnitPanelProps) {
   const unit = useSimStore((s) => s.getSelectedUnit());
   const objectives = useSimStore((s) => s.objectives);
+  const allUnits = useSimStore((s) => s.units);
   const simTime = useSimStore((s) => s.sim_time);
   const running = useSimStore((s) => s.running);
   const tick = useSimStore((s) => s.tick);
@@ -51,6 +53,12 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
 
   const [missionType, setMissionType] = useState<MissionType>('secure');
   const [objectiveId, setObjectiveId] = useState<string>('');
+  const [targetUnitId, setTargetUnitId] = useState<string>('');
+
+  // Units on same side eligible as escort targets (not self, not destroyed)
+  const escortCandidates = unit
+    ? allUnits.filter(u => u.side === unit.side && u.id !== unit.id && !u.destroyed)
+    : [];
 
   const formatTime = (iso: string) => {
     if (!iso) return '--';
@@ -58,16 +66,19 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
     catch { return iso; }
   };
 
-  const needsObjective = missionType !== 'intercept' && missionType !== 'area_patrol' && missionType !== 'rtb';
+  const needsObjective = !['intercept', 'area_patrol', 'rtb', 'escort'].includes(missionType);
+  const needsTargetUnit = missionType === 'escort';
 
   const assignMission = () => {
     if (!unit || unit.destroyed) return;
     if (needsObjective && !objectiveId) return;
+    if (needsTargetUnit && !targetUnitId) return;
     onSend({
       type: 'assign_mission',
       unit_id: unit.id,
       mission_type: missionType,
       objective_id: needsObjective ? objectiveId : undefined,
+      target_unit_id: needsTargetUnit ? targetUnitId : undefined,
       patrol_lat: missionType === 'area_patrol' ? unit.lat : undefined,
       patrol_lon: missionType === 'area_patrol' ? unit.lon : undefined,
     });
@@ -162,15 +173,24 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
             </>
           )}
 
-          {unit.data_link && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {unit.data_link && (
+              <div style={{
+                padding: '2px 6px', fontSize: 9, letterSpacing: 1,
+                border: '1px solid #2255aa', color: '#4488ff', background: '#050d1a',
+              }}>
+                ◈ DATA LINK
+              </div>
+            )}
             <div style={{
-              display: 'inline-block', marginBottom: 8,
               padding: '2px 6px', fontSize: 9, letterSpacing: 1,
-              border: '1px solid #2255aa', color: '#4488ff', background: '#050d1a',
+              border: unit.emcon ? '1px solid #aa8800' : '1px solid #226622',
+              color: unit.emcon ? '#ddaa22' : '#44cc66',
+              background: unit.emcon ? '#0d0800' : '#041004',
             }}>
-              ◈ DATA LINK
+              {unit.emcon ? '◉ EMITTING' : '◎ EMCON'}
             </div>
-          )}
+          </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
             <tbody>
@@ -179,6 +199,8 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                 ['POS', `${unit.lat.toFixed(3)}° ${unit.lon.toFixed(3)}°`],
                 ['HDG', `${unit.heading.toFixed(0)}°`],
                 ['SPD', `${unit.speed.toFixed(0)} km/h`],
+                ['ALT', `${unit.altitude_m?.toFixed(0) ?? '—'} m`],
+                ['RCS', `${unit.rcs?.toFixed(3) ?? '—'} m²`],
               ] as [string, string][]).map(([k, v]) => (
                 <tr key={k}>
                   <td style={{ color: '#4a6a8a', paddingRight: 8, paddingBottom: 2, whiteSpace: 'nowrap' }}>{k}</td>
@@ -205,6 +227,11 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                   <div style={{ fontSize: 10, color: '#6a8aaa', marginTop: 2 }}>
                     {unit.mission.patrol_lat.toFixed(3)}° {unit.mission.patrol_lon?.toFixed(3)}°
                   </div>
+                )}
+                {unit.mission.type === 'escort' && unit.mission.target_unit_id && (
+                  <span style={{ color: '#c8d8f0' }}>
+                    {' → '}{allUnits.find(u => u.id === unit.mission!.target_unit_id)?.name ?? unit.mission.target_unit_id}
+                  </span>
                 )}
               </div>
               <div style={{ color: unit.mission.status === 'on_station' ? '#44dd77' : '#ddaa44', marginTop: 2 }}>
@@ -242,6 +269,19 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                   <option value="">— select objective —</option>
                   {objectives.map((o) => (
                     <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              )}
+
+              {needsTargetUnit && (
+                <select
+                  value={targetUnitId}
+                  onChange={(e) => setTargetUnitId(e.target.value)}
+                  style={{ ...selectStyle, marginTop: 4 }}
+                >
+                  <option value="">— select escort target —</option>
+                  {escortCandidates.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.unit_type})</option>
                   ))}
                 </select>
               )}

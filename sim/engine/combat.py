@@ -5,13 +5,27 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 from .unit import Unit
-from .geo import haversine
+from .geo import haversine, bearing as geo_bearing
 
 _LIB_PATH = Path(__file__).parent.parent / "data" / "unit_types.json"
 
 # Strip the _comment key so lookups are clean
 _raw = json.loads(_LIB_PATH.read_text())
 UNIT_TYPE_LIB: Dict[str, dict] = {k: v for k, v in _raw.items() if not k.startswith("_")}
+
+# Detection model constants
+ESM_FACTOR = 2.5      # emitting unit visible to ESM at this multiple of its own radar range
+REFERENCE_RCS = 5.0   # m² — sensor_km values in library are calibrated vs this target
+
+# Pulse-Doppler notch parameters per attacker class.
+# When a target flies perpendicular to the radar LOS, its Doppler shift ≈ 0 and
+# the receiver filters it as ground clutter.  "depth" = fraction of normal range
+# retained at perfect notch; "half_band_deg" = half-width of the notch band.
+_NOTCH_PARAMS: Dict[str, dict] = {
+    "air":    {"depth": 0.15, "half_band_deg": 12},  # modern look-down/shoot-down radar
+    "naval":  {"depth": 0.22, "half_band_deg": 10},  # phased-array ship SAM radar
+    "ground": {"depth": 0.25, "half_band_deg": 10},  # SAM battery (S-300/400, Patriot)
+}
 
 # Fallback capabilities when unit_type is unknown or absent
 _CLASS_DEFAULTS: Dict[str, dict] = {
@@ -50,6 +64,80 @@ def weapon_range(unit: Unit) -> float:
     return caps(unit)["weapon_km"]
 
 
+def radar_horizon_km(h_sensor_m: float, h_target_m: float) -> float:
+    """Radar line-of-sight limit (km) via 4/3-earth model."""
+    return 4.12 * (max(0.0, h_sensor_m) ** 0.5 + max(0.0, h_target_m) ** 0.5)
+
+
+def notch_factor(attacker: Unit, target: Unit) -> float:
+    """
+    Pulse-Doppler notch degradation: returns a detection-range multiplier in [depth..1.0].
+
+    Physics: when a target flies perpendicular to the radar line-of-sight its radial
+    velocity ≈ 0.  Pulse-Doppler receivers reject near-zero Doppler returns as ground
+    clutter, so the target effectively disappears from the radar picture.
+
+    Only affects moving airborne targets (ground/naval targets have no meaningful Doppler
+    notch benefit).  ESM detection is *not* affected — notching defeats reflected radar
+    energy but the target's own emissions are still visible.
+    """
+    if target.unit_class.value != "air" or not target.airborne or target.speed < 50.0:
+        return 1.0
+    params = _NOTCH_PARAMS.get(attacker.unit_class.value)
+    if params is None:
+        return 1.0
+
+    # Angle between target heading and the radar LOS (attacker → target)
+    los_brng = geo_bearing(attacker.lat, attacker.lon, target.lat, target.lon)
+    doppler_angle = abs((target.heading - los_brng + 180) % 360 - 180)
+    # 0° = closing head-on, 90° = perpendicular (notch), 180° = fleeing directly away
+    notch_dev = abs(doppler_angle - 90.0)   # 0 = perfect notch
+
+    if notch_dev <= params["half_band_deg"]:
+        t = notch_dev / params["half_band_deg"]     # 0 at centre, 1 at band edge
+        return params["depth"] + (1.0 - params["depth"]) * t
+    return 1.0
+
+
+def _effective_altitude(unit: Unit) -> float:
+    """Altitude for horizon calc. Air units on the ground use ~5m (airfield)."""
+    if unit.unit_class.value == "air" and not unit.airborne:
+        return 5.0
+    return unit.altitude_m
+
+
+def _radar_range(scanner: Unit, target: Unit) -> float:
+    """
+    Pure radar detection range — affected by horizon, RCS, and the Doppler notch.
+    This is also the weapon-guidance range: radar-guided missiles need this lock.
+    """
+    base = sensor_range(scanner)
+    horizon = radar_horizon_km(_effective_altitude(scanner), _effective_altitude(target))
+    rcs_scale = min(1.0, (max(1e-4, target.rcs) / REFERENCE_RCS) ** 0.25)
+    return min(base, horizon) * rcs_scale * notch_factor(scanner, target)
+
+
+def unit_detection_range(scanner: Unit, target: Unit) -> float:
+    """
+    Situational-awareness range: the farther of radar or passive ESM detection.
+    Used for FOW picture and knowing a target exists/where it is.
+    ESM is NOT affected by the target's notch maneuver — it detects the target's
+    own radar emissions, not reflected energy.
+    """
+    radar_rng = _radar_range(scanner, target)
+    esm_rng = min(sensor_range(scanner), sensor_range(target) * ESM_FACTOR) if target.emcon else 0.0
+    return max(radar_rng, esm_rng)
+
+
+def unit_engagement_range(scanner: Unit, target: Unit) -> float:
+    """
+    Weapon-guidance range: the radar must hold lock for the missile to guide.
+    A target in the Doppler notch is detectable via ESM (unit_detection_range)
+    but cannot be engaged — the seeker filters it as ground clutter.
+    """
+    return _radar_range(scanner, target)
+
+
 def valid_targets(unit: Unit) -> List[str]:
     """Unit classes this unit can engage. Library entry overrides class default."""
     c = caps(unit)
@@ -62,7 +150,26 @@ def valid_targets(unit: Unit) -> List[str]:
 _MAG_KEY: Dict[str, str] = {"air": "aa", "ground": "ag", "naval": "as"}
 
 
-def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
+def build_detection_picture(units: Dict[str, Unit]) -> Dict[str, Set[str]]:
+    """
+    Fog-of-war picture: for each side, the set of enemy unit IDs detected by
+    ANY friendly unit (regardless of data-link status). Used for UI perspective
+    filtering; separate from the combat detection gate.
+    """
+    active = [u for u in units.values() if not u.destroyed]
+    enemy_side: Dict[str, str] = {"blue": "red", "red": "blue"}
+    detected: Dict[str, Set[str]] = {"blue": set(), "red": set()}
+    for scanner in active:
+        e_side = enemy_side[scanner.side.value]
+        for target in active:
+            if target.side.value != e_side:
+                continue
+            if haversine(scanner.lat, scanner.lon, target.lat, target.lon) <= unit_detection_range(scanner, target):
+                detected[scanner.side.value].add(target.id)
+    return detected
+
+
+def resolve_combat(units: Dict[str, Unit]) -> Tuple[List[dict], Dict[str, List[str]]]:
     """
     Two-phase combat resolution for one tick:
       1. Collect all (attacker, target, damage) pairs simultaneously.
@@ -85,12 +192,11 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
     for scanner in active:
         if not UNIT_TYPE_LIB.get(scanner.unit_type, {}).get("data_link", False):
             continue
-        s_range = sensor_range(scanner)
         e_side = enemy_side[scanner.side.value]
         for target in active:
             if target.side.value != e_side:
                 continue
-            if haversine(scanner.lat, scanner.lon, target.lat, target.lon) <= s_range:
+            if haversine(scanner.lat, scanner.lon, target.lat, target.lon) <= unit_detection_range(scanner, target):
                 network_detected[scanner.side.value].add(target.id)
 
     # Phase 1 — find engagements
@@ -109,13 +215,20 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
                 continue
             dist = haversine(attacker.lat, attacker.lon, other.lat, other.lon)
 
-            # Detection gate for data-linked units: own sensor OR network picture.
-            # Non-data-linked units fire on anything in weapon range (no detection gate).
-            if has_data_link:
-                in_own_sensor = dist <= sensor_range(attacker)
-                in_network = other.id in network_detected[attacker.side.value]
-                if not (in_own_sensor or in_network):
-                    continue
+            # Gate 1 — situational awareness: does the attacker know the target exists?
+            # ESM-augmented; data-link extends the pool.  Notch does not defeat this.
+            in_own_sensor = dist <= unit_detection_range(attacker, other)
+            in_network = has_data_link and other.id in network_detected[attacker.side.value]
+            if not (in_own_sensor or in_network):
+                continue  # completely unaware — can't engage
+
+            # Gate 2 — weapon guidance: can the radar hold lock to guide the weapon?
+            # The Doppler notch defeats pulse-Doppler seekers even if position is known.
+            # Non-guided weapons (artillery, guns) fire within weapon range regardless —
+            # they use GPS/ballistic fire-for-effect, not continuous radar guidance.
+            needs_radar_lock = other.unit_class.value == "air" and other.airborne
+            if needs_radar_lock and dist > unit_engagement_range(attacker, other):
+                continue  # target in notch — seeker can't lock, no firing solution
 
             if dist <= w_range:
                 candidates.append((dist, other))
@@ -132,6 +245,11 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
 
         damage = float(caps(attacker)["attack_per_tick"])
         attacks.append((attacker, nearest, damage))
+
+    # Build under-fire map: victim_id → [attacker_ids] (from phase 1 results)
+    under_fire: Dict[str, List[str]] = {}
+    for attacker, target, _ in attacks:
+        under_fire.setdefault(target.id, []).append(attacker.id)
 
     # Phase 2 — apply damage
     events: List[dict] = []
@@ -177,4 +295,4 @@ def resolve_combat(units: Dict[str, Unit]) -> List[dict]:
                     "tick": None,  # filled in by SimulationEngine
                 })
 
-    return events
+    return events, under_fire

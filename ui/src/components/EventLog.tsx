@@ -70,6 +70,14 @@ function formatEvent(e: CombatEvent): { text: string; color: string } {
       color,
     };
   }
+  if (e.type === 'commander_assign') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    return {
+      text: `⊞ CMD [${side.toUpperCase()}] → ${e.unit_name}: ${(e.mission ?? '').toUpperCase()} ${e.objective ?? ''} (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
   return { text: JSON.stringify(e), color: '#666' };
 }
 

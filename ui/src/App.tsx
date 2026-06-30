@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { MapView } from './components/MapView';
 import { UnitPanel } from './components/UnitPanel';
 import { EventLog } from './components/EventLog';
+import { GoalsPanel } from './components/GoalsPanel';
 import { ScenarioBuilder } from './components/ScenarioBuilder';
 import { useSimSocket } from './hooks/useSimSocket';
-import { useSimStore } from './store/simStore';
+import { useSimStore, type Perspective } from './store/simStore';
 import type { RingToggles } from './types';
 
 const API = 'http://localhost:8000';
@@ -13,8 +14,11 @@ const MONO = { fontFamily: '"Courier New", monospace' } as const;
 export default function App() {
   const { send } = useSimSocket();
   const running = useSimStore((s) => s.running);
+  const perspective = useSimStore((s) => s.perspective);
+  const setPerspective = useSimStore((s) => s.setPerspective);
   const [rings, setRings] = useState<RingToggles>({ sensor: false, airWeapon: false, surfaceWeapon: false });
   const [mode, setMode] = useState<'sim' | 'builder'>('sim');
+  const [showGoals, setShowGoals] = useState(false);
 
   const toggleSim = async () => {
     const endpoint = running ? '/sim/pause' : '/sim/start';
@@ -38,6 +42,7 @@ export default function App() {
       <MapView rings={rings} />
       <UnitPanel onSend={send} />
       <EventLog />
+      {showGoals && <GoalsPanel />}
 
       {/* Sim control bar */}
       <div style={{
@@ -75,6 +80,33 @@ export default function App() {
         ))}
 
         <div style={{ width: 1, height: 20, background: '#1e2e4a', margin: '0 4px' }} />
+
+        <span style={{ letterSpacing: 1 }}>VIEW</span>
+        {([
+          { key: 'god'  as Perspective, label: '⊕ GOD',  color: '#aaaaaa' },
+          { key: 'blue' as Perspective, label: '◑ BLUE', color: '#4488ff' },
+          { key: 'red'  as Perspective, label: '◑ RED',  color: '#ff4444' },
+        ]).map(({ key, label, color }) => (
+          <button key={key} onClick={() => setPerspective(key)} style={{
+            background: perspective === key ? `${color}22` : 'transparent',
+            border: `1px solid ${perspective === key ? color : '#2a3e5a'}`,
+            color: perspective === key ? color : '#4a6a8a',
+            ...MONO, fontSize: 11, padding: '4px 10px', cursor: 'pointer', letterSpacing: 1,
+          }}>
+            {label}
+          </button>
+        ))}
+
+        <div style={{ width: 1, height: 20, background: '#1e2e4a', margin: '0 4px' }} />
+
+        <button onClick={() => setShowGoals(g => !g)} style={{
+          background: showGoals ? '#00220a' : 'transparent',
+          border: `1px solid ${showGoals ? '#22cc66' : '#2a4a6a'}`,
+          color: showGoals ? '#22cc66' : '#4a8aaa',
+          ...MONO, fontSize: 11, padding: '4px 12px', cursor: 'pointer', letterSpacing: 1,
+        }}>
+          ⊞ GOALS
+        </button>
 
         <button onClick={() => setMode('builder')} style={{
           background: 'transparent', border: '1px solid #2a4a6a',

@@ -72,7 +72,7 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 - [x] `./start.sh` one-shot launcher with stale-process cleanup
 - [x] Baltic flashpoint scenario (10 units, 9 objectives, NATO vs Russia/Estonia)
 - [x] Git repo initialised
-- [x] Naval terrain masking — Gulf of Finland corridor waypoint; route_clips_land check
+- [x] Terrain-aware routing — global land/water model from real coastline data (Natural Earth 10m); ground units route around water, naval units route around land, via grid A* fallback when the direct line crosses the wrong domain; works on any theater, not just the Baltic
 - [x] Objective capture — controlling side flips when ground unit holds objective uncontested; capture event in log
 - [x] Scenario builder — place units on map per coalition, save/load/play
 - [x] Theater base maps — Baltic Sea template (29 objectives); `/theaters` endpoints; map flies to theater on select
@@ -86,14 +86,18 @@ Status markers: ✅ done · 🔄 in progress · ⬜ not started
 - [x] **Magazine depth + loadouts** — per-unit ammo pools (aa/ag/as rounds); loadout presets per type in unit_types.json (e.g. "Air Superiority", "Strike", "Anti-Ship"); builder loadout picker; ammo consumed per engagement tick; `out_of_ammo` events in log; weapon_km_override per preset (ATACMS 165 km, anti-ship missiles)
 - [x] **Fuel model** — `fuel_pct` on all units; per-tick burn rates (moving vs idle) per unit type; `low_fuel` events in log; fuel bar in UnitPanel
 - [x] **RTB / Rearm mission** — `rtb` mission type; air and naval route to home base then rearm+refuel; ground and emplaced SAMs rearm in place; `rearming` state suppresses combat; `rtb_complete` event; RTB button in UnitPanel; air units set `airborne=False` on landing, `True` on new mission takeoff; home_base set per unit in scenario JSON and builder
-- [ ] Side-level goals in scenario JSON (`"goals": [{"type": "hold", "objective": "amari_ab"}]`)
-- [ ] Commander AI per side: re-evaluates every N ticks and assigns/reassigns unit missions
-- [ ] Player interface: assign goals to a side, not missions to individual units
+- [x] Side-level goals in scenario JSON (`"goals": {"blue": [{"type": "hold", "objective_id": "amari_ab", "priority": 1}], "red": [...]}}`)
+- [x] Commander AI per side: re-evaluates every 5 ticks (`REEVAL_INTERVAL`) and assigns/reassigns unit missions to fill goal gaps, never disrupting units already serving a goal or mid-RTB
+- [x] Player interface: GoalsPanel UI — assign/reorder/remove goals per side via `/goals/{side}` REST endpoint, not missions to individual units
 - [ ] Reactive rules: fighters scramble when enemy air detected within sensor range
 - [ ] Basic threat priority: commander weighs which objectives are under pressure
 - [ ] Dispersed basing — aircraft capable of operating from roads/unprepared strips (Su-34, A-10) can be placed freely; requires `dispersed_basing: true` in unit_types.json
 - [ ] Multi-unit selection — select several units at once and assign them a shared goal; units coordinate to accomplish it as a group
 - [ ] **Altitude-dependent detection** — current sensor_km values are "maximum bubble" (best-case, optimal-altitude target). Real detection is horizon-limited for surface radars looking at low-flying targets: a ship radar at 30m height can only see a sea-skimming missile at ~25km despite having a 320km bubble for high-altitude aircraft. Model as `sensor_km_hi` (aircraft) vs `sensor_km_lo` (cruise missiles, surface ships) per unit type; unit altitude feeds the correct range. Relevant pairs: ship vs cruise missile (lo), ship vs fighter (hi), ground radar vs MLRS (ballistic arc = hi briefly then lo). This also means a Slava at 250km bubble can't see an F-35 at 60m ingress altitude until ~30km.
+- [ ] **Poseidon/Il-38 ASW attack** — P-8A and Il-38N already have `is_surveillance: true` and anti-ship capability; extend to engage submarine targets (Ula-class etc.) using torpedo loadout; submarines lack air-defence so MPA can safely engage if no escorting fighters present. Requires `submarine` as a valid target class in MPA valid_targets.
+- [ ] **Carriers (CVN/CVBG)** — large naval unit with flight deck; can spawn/recover aircraft; acts as mobile airbase; very high HP and RCS; requires dedicated CVBG escort screen (Burke, frigate). High priority escort scenario target.
+- [ ] **Escort AI improvements** — threat-axis positioning (escort interposes on bearing from nearest enemy); proactive threat intercept (escort breaks away to engage inbound missile/aircraft before it reaches the charge); multi-escort coordination (two fighters split CAP coverage around one AWACS).
+- [ ] **EMCON AI** — units with `data_link: true` and low RCS (F-35) go passive (emcon=False) when friendly data-link picture covers their field of view; turn radar back on when blind spots appear; emplaced SAMs emit only when threat in engagement range.
 
 ---
 
