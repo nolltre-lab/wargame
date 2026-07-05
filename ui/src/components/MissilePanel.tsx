@@ -3,6 +3,13 @@ import { useSimStore } from '../store/simStore';
 const MONO = { fontFamily: '"Courier New", monospace' } as const;
 
 const AMMO_LABEL: Record<string, string> = { aa: 'AIR-TO-AIR', ag: 'AIR-TO-GROUND', as: 'ANTI-SHIP' };
+
+function weaponName(weapon_label: string, ammo_type: string): string {
+  // Extract parenthetical name if present: "Air Superiority (Meteor)" → "Meteor"
+  const m = weapon_label.match(/\(([^)]+)\)/);
+  if (m) return m[1];
+  return weapon_label || AMMO_LABEL[ammo_type] || ammo_type.toUpperCase();
+}
 const AMMO_COLOR: Record<string, Record<string, string>> = {
   blue: { aa: '#00eeff', ag: '#ffdd00', as: '#ff8800' },
   red:  { aa: '#ff00cc', ag: '#ffdd00', as: '#ff3300' },
@@ -42,13 +49,19 @@ export function MissilePanel() {
       }}>
         <div>
           <span style={{ color: accentColor, letterSpacing: 1, fontSize: 12 }}>
-            ⬡ {AMMO_LABEL[m.ammo_type] ?? m.ammo_type.toUpperCase()}
+            ⬡ {weaponName(m.weapon_label, m.ammo_type)}
           </span>
           <span style={{
             marginLeft: 8, fontSize: 10, letterSpacing: 1,
+            color: '#4a6a8a',
+          }}>
+            {AMMO_LABEL[m.ammo_type] ?? m.ammo_type.toUpperCase()}
+          </span>
+          <span style={{
+            marginLeft: 6, fontSize: 10, letterSpacing: 1,
             color: sideColor,
           }}>
-            {m.side.toUpperCase()}
+            · {m.side.toUpperCase()}
           </span>
         </div>
         <button

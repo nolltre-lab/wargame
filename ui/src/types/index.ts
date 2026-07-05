@@ -74,6 +74,7 @@ export interface SimMissile {
   firer_name: string;
   target_id: string;
   target_name: string;
+  weapon_label: string;
   side: Side;
   ammo_type: string;  // "aa" | "ag" | "as"
   lat: number;

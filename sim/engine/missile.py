@@ -26,3 +26,4 @@ class Missile(BaseModel):
     total_ticks: int
     intercepted: bool = False
     waypoints: List[Tuple[float, float]] = Field(default_factory=list)
+    weapon_label: str = ""  # e.g. "Anti-Ship (JSM)", "Air Superiority (Meteor)"

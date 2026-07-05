@@ -20,14 +20,24 @@ export default function App() {
   const [rings, setRings] = useState<RingToggles>({ sensor: false, airWeapon: false, surfaceWeapon: false, territory: false });
   const [mode, setMode] = useState<'sim' | 'builder'>('sim');
   const [showGoals, setShowGoals] = useState(false);
+  const [speed, setSpeed] = useState<number>(60);
+
+  const SPEEDS = [1, 5, 10, 30, 60];
 
   const toggleSim = async () => {
     const endpoint = running ? '/sim/pause' : '/sim/start';
     await fetch(`${API}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ speed: 60 }),
+      body: JSON.stringify({ speed }),
     });
+  };
+
+  const changeSpeed = async (s: number) => {
+    setSpeed(s);
+    if (running) {
+      await fetch(`${API}/sim/speed/${s}`, { method: 'POST' });
+    }
   };
 
   if (mode === 'builder') {
@@ -53,15 +63,25 @@ export default function App() {
         background: 'rgba(8, 12, 22, 0.88)', border: '1px solid #1e2e4a',
         padding: '8px 16px', ...MONO, fontSize: 12, color: '#4a6a8a',
       }}>
-        <span style={{ marginRight: 8, letterSpacing: 1 }}>SIM CONTROL</span>
+        <span style={{ marginRight: 4, letterSpacing: 1 }}>SIM CONTROL</span>
         <button onClick={toggleSim} style={{
           background: running ? '#1a0a00' : '#003318',
           border: `1px solid ${running ? '#cc4422' : '#22cc66'}`,
           color: running ? '#cc4422' : '#22cc66',
-          ...MONO, fontSize: 12, padding: '5px 18px', cursor: 'pointer', letterSpacing: 1,
+          ...MONO, fontSize: 12, padding: '5px 14px', cursor: 'pointer', letterSpacing: 1,
         }}>
-          {running ? '■  PAUSE' : '▶  RUN  60×'}
+          {running ? '■  PAUSE' : '▶  RUN'}
         </button>
+        {SPEEDS.map(s => (
+          <button key={s} onClick={() => changeSpeed(s)} style={{
+            background: speed === s ? '#0a1e10' : 'transparent',
+            border: `1px solid ${speed === s ? '#22cc66' : '#1e3a2a'}`,
+            color: speed === s ? '#22cc66' : '#3a6a4a',
+            ...MONO, fontSize: 11, padding: '4px 7px', cursor: 'pointer', letterSpacing: 0,
+          }}>
+            {s}×
+          </button>
+        ))}
 
         <div style={{ width: 1, height: 20, background: '#1e2e4a', margin: '0 4px' }} />
 

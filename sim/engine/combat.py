@@ -195,6 +195,7 @@ def _make_missile(attacker: Unit, target: Unit, damage: float) -> Missile:
     lib = UNIT_TYPE_LIB.get(attacker.unit_type, {})
     params = {**_MISSILE_DEFAULTS.get(ammo_type, _MISSILE_DEFAULTS["ag"])}
     params.update(lib.get("missile_params", {}).get(ammo_type, {}))
+    weapon_label = lib.get("loadout_presets", {}).get(attacker.loadout, {}).get("label", "")
     speed = float(params["speed_kmh"])
     dist = haversine(attacker.lat, attacker.lon, target.lat, target.lon)
     km_per_tick = speed / 60.0  # at 60s per tick
@@ -206,6 +207,7 @@ def _make_missile(attacker: Unit, target: Unit, damage: float) -> Missile:
         target_id=target.id,
         target_name=target.name,
         side=attacker.side.value,
+        weapon_label=weapon_label,
         ammo_type=ammo_type,
         lat=attacker.lat,
         lon=attacker.lon,
