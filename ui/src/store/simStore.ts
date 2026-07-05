@@ -9,8 +9,10 @@ interface SimStore extends Omit<SimState, 'events'> {
   latestEvents: CombatEvent[];
   eventLog: CombatEvent[];
   selectedUnitId: string | null;
+  selectedMissileId: string | null;
   perspective: Perspective;
   selectUnit: (id: string | null) => void;
+  selectMissile: (id: string | null) => void;
   setPerspective: (p: Perspective) => void;
   setSimState: (state: SimState) => void;
   getSelectedUnit: () => Unit | null;
@@ -34,9 +36,11 @@ export const useSimStore = create<SimStore>((set, get) => ({
   latestEvents: [],
   eventLog: [],
   selectedUnitId: null,
+  selectedMissileId: null,
   perspective: 'god',
 
-  selectUnit: (id) => set({ selectedUnitId: id }),
+  selectUnit: (id) => set({ selectedUnitId: id, selectedMissileId: null }),
+  selectMissile: (id) => set({ selectedMissileId: id, selectedUnitId: null }),
   setPerspective: (p) => set({ perspective: p }),
 
   setSimState: (state) =>

@@ -110,6 +110,24 @@ function missileTrailFC(missiles: SimMissile[]): MapData {
   return md({ type: 'FeatureCollection', features: feats });
 }
 
+// Dashed line from selected missile's current position to its target's current position
+function missileTargetLineFC(missiles: SimMissile[], units: Unit[], selectedId: string | null): MapData {
+  if (!selectedId) return md(emptyFC());
+  const m = missiles.find(x => x.id === selectedId);
+  if (!m) return md(emptyFC());
+  const target = units.find(u => u.id === m.target_id);
+  const destLon = target ? target.lon : m.target_lon;
+  const destLat = target ? target.lat : m.target_lat;
+  return md({
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[m.lon, m.lat], [destLon, destLat]] },
+      properties: { side: m.side },
+    }],
+  });
+}
+
 // Missile head: point at current position with heading and side/type info
 function missileHeadFC(missiles: SimMissile[]): MapData {
   return md({
@@ -246,6 +264,8 @@ export function MapView({ rings }: MapViewProps) {
   const objectives = useSimStore(s => s.objectives);
   const selectedUnitId = useSimStore(s => s.selectedUnitId);
   const selectUnit = useSimStore(s => s.selectUnit);
+  const selectedMissileId = useSimStore(s => s.selectedMissileId);
+  const selectMissile = useSimStore(s => s.selectMissile);
 
   // Keep objectives ref current so popup click handler reads fresh controlling_side
   objectivesRef.current = objectives;
@@ -376,6 +396,15 @@ export function MapView({ rings }: MapViewProps) {
         },
       });
 
+      // Missile-to-target dashed line (shown for selected missile only)
+      src('missile-target-line');
+      lay({ id: 'missile-target-layer', type: 'line', source: 'missile-target-line',
+        paint: {
+          'line-color': ['case', ['==', ['get', 'side'], 'blue'], '#00eeff', '#ff44cc'],
+          'line-width': 1.5, 'line-opacity': 0.75, 'line-dasharray': [6, 4],
+        },
+      });
+
       // Selection ring (circle layer, coordinate-exact like all GeoJSON)
       src('sel-unit');
       lay({ id: 'sel-ring', type: 'circle', source: 'sel-unit',
@@ -421,6 +450,11 @@ export function MapView({ rings }: MapViewProps) {
         const props = e.features?.[0]?.properties;
         if (props && !props.destroyed) selectUnit(props.id as string);
       });
+      map.on('click', 'missile-icon', (e) => {
+        clickedRef.current = true;
+        const props = e.features?.[0]?.properties;
+        if (props?.id) selectMissile(props.id as string);
+      });
       map.on('click', () => {
         if (clickedRef.current) { clickedRef.current = false; return; }
         // Close objective popup on bare canvas click
@@ -433,6 +467,12 @@ export function MapView({ rings }: MapViewProps) {
           map.getCanvas().style.cursor = 'pointer';
       });
       map.on('mouseleave', 'unit-symbols', () => {
+        map.getCanvas().style.cursor = '';
+      });
+      map.on('mouseenter', 'missile-icon', () => {
+        map.getCanvas().style.cursor = 'crosshair';
+      });
+      map.on('mouseleave', 'missile-icon', () => {
         map.getCanvas().style.cursor = '';
       });
 
@@ -538,7 +578,10 @@ export function MapView({ rings }: MapViewProps) {
     if (!m || !mapReady || !missileIconsLoadedRef.current) return;
     (m.getSource('missile-trail') as maplibregl.GeoJSONSource)?.setData(missileTrailFC(missiles));
     (m.getSource('missile-head')  as maplibregl.GeoJSONSource)?.setData(missileHeadFC(missiles));
-  }, [mapReady, missiles]);
+    (m.getSource('missile-target-line') as maplibregl.GeoJSONSource)?.setData(
+      missileTargetLineFC(missiles, units, selectedMissileId),
+    );
+  }, [mapReady, missiles, units, selectedMissileId]);
 
   return <div ref={mapContainer} style={{ position: 'absolute', inset: 0 }} />;
 }

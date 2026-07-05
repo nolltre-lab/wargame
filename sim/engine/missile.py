@@ -1,5 +1,6 @@
 from __future__ import annotations
-from pydantic import BaseModel
+from typing import List, Tuple
+from pydantic import BaseModel, Field
 
 
 class Missile(BaseModel):
@@ -7,6 +8,7 @@ class Missile(BaseModel):
     firer_id: str
     firer_name: str
     target_id: str
+    target_name: str = ""
     side: str           # "blue" | "red"
     ammo_type: str      # "aa" | "ag" | "as"
     lat: float
@@ -23,3 +25,4 @@ class Missile(BaseModel):
     ticks_remaining: int
     total_ticks: int
     intercepted: bool = False
+    waypoints: List[Tuple[float, float]] = Field(default_factory=list)

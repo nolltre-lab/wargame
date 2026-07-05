@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import json
+import math
 import random
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from .combat import (
     missile_detection_range,
 )
 from .commander import Commander
+from . import terrain
 
 
 class SimulationEngine:
@@ -137,9 +139,28 @@ class SimulationEngine:
                 e["tick"] = self.tick_count
         self._recent_events = events + resource_events
 
-        # Register new missiles
+        # Register new missiles; route AS missiles around land (sea-skimming path)
         for m in new_missiles:
             self.missiles[m.id] = m
+            if m.ammo_type == "as":
+                try:
+                    wps = terrain.find_route(
+                        m.origin_lat, m.origin_lon,
+                        m.target_lat, m.target_lon,
+                        "water",
+                    )
+                    if len(wps) > 1:
+                        m.waypoints = list(wps)
+                        pts = [(m.origin_lat, m.origin_lon)] + list(wps)
+                        route_dist = sum(
+                            haversine(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])
+                            for i in range(len(pts) - 1)
+                        )
+                        km_per_tick = m.speed_kmh / 60.0
+                        m.total_ticks = max(2, math.ceil(route_dist / km_per_tick))
+                        m.ticks_remaining = m.total_ticks
+                except Exception:
+                    pass  # fall back to direct flight if routing fails
 
         # Augment under_fire with units targeted by any in-flight missile
         under_fire = dict(ground_under_fire)
@@ -335,16 +356,37 @@ class SimulationEngine:
             if missile.intercepted or missile.ticks_remaining <= 0:
                 continue
             dist_this_tick = missile.speed_kmh * (self.tick_duration / 3600.0)
-            dist_to_target = haversine(missile.lat, missile.lon, missile.target_lat, missile.target_lon)
-            if dist_this_tick >= dist_to_target:
-                missile.lat = missile.target_lat
-                missile.lon = missile.target_lon
-                missile.ticks_remaining = 0
+
+            if missile.waypoints:
+                # Waypoint-guided (AS missiles routed around land)
+                remaining = dist_this_tick
+                while remaining > 0 and missile.waypoints:
+                    wp_lat, wp_lon = missile.waypoints[0]
+                    d = haversine(missile.lat, missile.lon, wp_lat, wp_lon)
+                    if remaining >= d:
+                        missile.lat, missile.lon = wp_lat, wp_lon
+                        missile.waypoints.pop(0)
+                        remaining -= d
+                    else:
+                        hdg = bearing(missile.lat, missile.lon, wp_lat, wp_lon)
+                        missile.heading = hdg
+                        missile.lat, missile.lon = destination(missile.lat, missile.lon, hdg, remaining)
+                        remaining = 0
+                missile.ticks_remaining = max(0, missile.ticks_remaining - 1)
+                if not missile.waypoints:
+                    missile.ticks_remaining = 0  # last waypoint was the target
             else:
-                hdg = bearing(missile.lat, missile.lon, missile.target_lat, missile.target_lon)
-                missile.heading = hdg
-                missile.lat, missile.lon = destination(missile.lat, missile.lon, hdg, dist_this_tick)
-                missile.ticks_remaining -= 1
+                # Direct flight (AA, AG, ground direct fire)
+                dist_to_target = haversine(missile.lat, missile.lon, missile.target_lat, missile.target_lon)
+                if dist_this_tick >= dist_to_target:
+                    missile.lat = missile.target_lat
+                    missile.lon = missile.target_lon
+                    missile.ticks_remaining = 0
+                else:
+                    hdg = bearing(missile.lat, missile.lon, missile.target_lat, missile.target_lon)
+                    missile.heading = hdg
+                    missile.lat, missile.lon = destination(missile.lat, missile.lon, hdg, dist_this_tick)
+                    missile.ticks_remaining -= 1
 
     def _process_missile_intercepts(self) -> List[dict]:
         """

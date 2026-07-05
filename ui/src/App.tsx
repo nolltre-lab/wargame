@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapView } from './components/MapView';
 import { UnitPanel } from './components/UnitPanel';
+import { MissilePanel } from './components/MissilePanel';
 import { EventLog } from './components/EventLog';
 import { GoalsPanel } from './components/GoalsPanel';
 import { ScenarioBuilder } from './components/ScenarioBuilder';
@@ -41,6 +42,7 @@ export default function App() {
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <MapView rings={rings} />
       <UnitPanel onSend={send} />
+      <MissilePanel />
       <EventLog />
       {showGoals && <GoalsPanel />}
 

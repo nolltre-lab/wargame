@@ -198,12 +198,13 @@ def _make_missile(attacker: Unit, target: Unit, damage: float) -> Missile:
     speed = float(params["speed_kmh"])
     dist = haversine(attacker.lat, attacker.lon, target.lat, target.lon)
     km_per_tick = speed / 60.0  # at 60s per tick
-    total_ticks = max(1, math.ceil(dist / km_per_tick))
+    total_ticks = max(2, math.ceil(dist / km_per_tick))  # min 2 so UI sees it for ≥1 frame
     return Missile(
         id=f"m_{uuid.uuid4().hex[:8]}",
         firer_id=attacker.id,
         firer_name=attacker.name,
         target_id=target.id,
+        target_name=target.name,
         side=attacker.side.value,
         ammo_type=ammo_type,
         lat=attacker.lat,
@@ -315,7 +316,16 @@ def resolve_combat(
 
         damage = float(caps(attacker)["attack_per_tick"])
 
-        if attacker.unit_class.value in ("air", "naval"):
+        # Air and naval always use missile entities.
+        # Ground units with intercept_capable=true also launch visible SAM missiles
+        # (so SAM shots appear on the map), but only when engaging air targets.
+        uses_missile = attacker.unit_class.value in ("air", "naval") or (
+            attacker.unit_class.value == "ground"
+            and UNIT_TYPE_LIB.get(attacker.unit_type, {}).get("intercept_capable", False)
+            and nearest.unit_class.value == "air"
+        )
+
+        if uses_missile:
             # Create missile entity and consume ammo at launch
             new_missiles.append(_make_missile(attacker, nearest, damage))
             if attacker.magazines and mag_key in attacker.magazines:
@@ -331,6 +341,7 @@ def resolve_combat(
                         "tick": None,
                     })
         else:
+            # Ground units engaging ground/naval targets use direct fire
             attacks.append((attacker, nearest, damage))
 
     # under_fire from ground direct fire (simulation.py adds missile under-fire separately)

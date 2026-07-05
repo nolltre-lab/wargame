@@ -73,6 +73,7 @@ export interface SimMissile {
   firer_id: string;
   firer_name: string;
   target_id: string;
+  target_name: string;
   side: Side;
   ammo_type: string;  // "aa" | "ag" | "as"
   lat: number;
@@ -87,6 +88,7 @@ export interface SimMissile {
   rcs: number;
   ticks_remaining: number;
   total_ticks: number;
+  waypoints?: [number, number][];
 }
 
 export interface CombatEvent {
