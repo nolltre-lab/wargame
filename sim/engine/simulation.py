@@ -601,4 +601,6 @@ class SimulationEngine:
             "missiles": [m.model_dump() for m in self.missiles.values() if not m.intercepted],
             "blue_detected_missiles": list(self._missile_detection["blue"]),
             "red_detected_missiles": list(self._missile_detection["red"]),
+            "tick_duration_s": self.tick_duration,
+            "speed_multiplier": self.speed_multiplier,
         }

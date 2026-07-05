@@ -10,6 +10,7 @@ interface SimStore extends Omit<SimState, 'events'> {
   eventLog: CombatEvent[];
   selectedUnitId: string | null;
   selectedMissileId: string | null;
+  last_tick_real_time: number;   // Date.now() when the last tick arrived
   perspective: Perspective;
   selectUnit: (id: string | null) => void;
   selectMissile: (id: string | null) => void;
@@ -37,6 +38,9 @@ export const useSimStore = create<SimStore>((set, get) => ({
   eventLog: [],
   selectedUnitId: null,
   selectedMissileId: null,
+  last_tick_real_time: 0,
+  tick_duration_s: 60,
+  speed_multiplier: 1,
   perspective: 'god',
 
   selectUnit: (id) => set({ selectedUnitId: id, selectedMissileId: null }),
@@ -61,6 +65,9 @@ export const useSimStore = create<SimStore>((set, get) => ({
         missiles: state.missiles ?? [],
         blue_detected_missiles: state.blue_detected_missiles ?? [],
         red_detected_missiles: state.red_detected_missiles ?? [],
+        tick_duration_s: state.tick_duration_s ?? 60,
+        speed_multiplier: state.speed_multiplier ?? 1,
+        last_tick_real_time: Date.now(),
         latestEvents: incoming,
         eventLog: newLog,
       };

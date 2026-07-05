@@ -236,6 +236,21 @@ function buildTerritoryFC(raw: GeoJsonFC | null, objectives: Objective[], show: 
   });
 }
 
+// ─── Position interpolation ───────────────────────────────────────────────────
+
+// Spherical destination point given start, bearing, and distance.
+// Same formula as the Python geo.destination() used by the sim.
+function destPoint(lat: number, lon: number, bearingDeg: number, distKm: number): [number, number] {
+  const R = 6371;
+  const d = distKm / R;
+  const b = bearingDeg * (Math.PI / 180);
+  const φ1 = lat * (Math.PI / 180);
+  const λ1 = lon * (Math.PI / 180);
+  const φ2 = Math.asin(Math.sin(φ1) * Math.cos(d) + Math.cos(φ1) * Math.sin(d) * Math.cos(b));
+  const λ2 = λ1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(φ1), Math.cos(d) - Math.sin(φ1) * Math.sin(φ2));
+  return [φ2 * (180 / Math.PI), λ2 * (180 / Math.PI)];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface MapViewProps {
@@ -266,9 +281,24 @@ export function MapView({ rings }: MapViewProps) {
   const selectUnit = useSimStore(s => s.selectUnit);
   const selectedMissileId = useSimStore(s => s.selectedMissileId);
   const selectMissile = useSimStore(s => s.selectMissile);
+  const running = useSimStore(s => s.running);
+  const lastTickRealTime = useSimStore(s => s.last_tick_real_time);
+  const tickDurationS = useSimStore(s => s.tick_duration_s);
+  const speedMultiplier = useSimStore(s => s.speed_multiplier);
 
   // Keep objectives ref current so popup click handler reads fresh controlling_side
   objectivesRef.current = objectives;
+
+  // Refs updated each render so the animation loop always reads current values
+  // without needing to restart when they change.
+  const animUnitsRef = useRef<Unit[]>([]);
+  const animMissilesRef = useRef<SimMissile[]>([]);
+  const animSelUnitRef = useRef<string | null>(null);
+  const animSelMissileRef = useRef<string | null>(null);
+  const animRunningRef = useRef(false);
+  const animLastTickRef = useRef(0);
+  const animTickDurRef = useRef(60);
+  const animSpeedRef = useRef(1);
 
   // Fetch territory polygons once (cached by browser)
   useEffect(() => {
@@ -292,6 +322,16 @@ export function MapView({ rings }: MapViewProps) {
     const detectedSet = new Set(perspective === 'blue' ? blueDetectedMissiles : redDetectedMissiles);
     return allMissiles.filter(m => m.side === perspective || detectedSet.has(m.id));
   }, [allMissiles, perspective, blueDetectedMissiles, redDetectedMissiles]);
+
+  // Sync animation refs every render (animation loop reads these without re-subscribing)
+  animUnitsRef.current = units;
+  animMissilesRef.current = missiles;
+  animSelUnitRef.current = selectedUnitId;
+  animSelMissileRef.current = selectedMissileId;
+  animRunningRef.current = running;
+  animLastTickRef.current = lastTickRealTime;
+  animTickDurRef.current = tickDurationS;
+  animSpeedRef.current = speedMultiplier;
 
   // ── Map init ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -497,36 +537,24 @@ export function MapView({ rings }: MapViewProps) {
     sd('sensor-rings', sensorRings(units, rings.sensor, selectedUnitId));
     sd('air-rings',    weaponRings(units, 'air', rings.airWeapon, selectedUnitId));
     sd('srf-rings',    weaponRings(units, 'surface', rings.surfaceWeapon, selectedUnitId));
-    sd('sel-unit',     selectedFC(units, selectedUnitId));
     sd('territory',    buildTerritoryFC(territoriesRaw, objectives, rings.territory));
   }, [mapReady, units, rings, selectedUnitId, territoriesRaw, objectives]);
 
-  // ── Unit icons (async load images then update GeoJSON) ────────────────────
+  // ── Unit icon image loading (async; position rendering is in the anim loop) ─
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || units.length === 0) return;
-
     const dpr = Math.ceil(window.devicePixelRatio || 1);
-    const needLoad = [...new Set(units.map(u => u.sidc))]
-      .filter(s => !loadedRef.current.has(s));
-
-    const push = () => {
-      if (!mapRef.current) return;
-      (mapRef.current.getSource('units') as maplibregl.GeoJSONSource)?.setData(unitFC(units));
-    };
-
-    if (needLoad.length === 0) { push(); return; }
-
+    const needLoad = [...new Set(units.map(u => u.sidc))].filter(s => !loadedRef.current.has(s));
+    if (needLoad.length === 0) return;
     Promise.all(
       needLoad.map(sidc =>
         loadSidcImage(sidc).then(data => {
-          if (!map.hasImage(`ms-${sidc}`)) {
-            map.addImage(`ms-${sidc}`, data, { pixelRatio: dpr });
-          }
+          if (!map.hasImage(`ms-${sidc}`)) map.addImage(`ms-${sidc}`, data, { pixelRatio: dpr });
           loadedRef.current.add(sidc);
         })
       )
-    ).then(push);
+    );
   }, [mapReady, units]);
 
   // ── Objective markers ─────────────────────────────────────────────────────
@@ -572,16 +600,56 @@ export function MapView({ rings }: MapViewProps) {
     });
   }, [mapReady, objectives]);
 
-  // ── Missile rendering (state-driven, updates each tick) ──────────────────
+  // ── 60fps animation loop — interpolates unit + missile positions between ticks ─
+  // Reads exclusively from refs so it never needs to restart on state changes.
   useEffect(() => {
-    const m = mapRef.current;
-    if (!m || !mapReady || !missileIconsLoadedRef.current) return;
-    (m.getSource('missile-trail') as maplibregl.GeoJSONSource)?.setData(missileTrailFC(missiles));
-    (m.getSource('missile-head')  as maplibregl.GeoJSONSource)?.setData(missileHeadFC(missiles));
-    (m.getSource('missile-target-line') as maplibregl.GeoJSONSource)?.setData(
-      missileTargetLineFC(missiles, units, selectedMissileId),
-    );
-  }, [mapReady, missiles, units, selectedMissileId]);
+    if (!mapReady) return;
+    let raf: number;
+    const frame = () => {
+      const map = mapRef.current;
+      if (map) {
+        const u = animUnitsRef.current;
+        const m = animMissilesRef.current;
+        const selUnit = animSelUnitRef.current;
+        const selMissile = animSelMissileRef.current;
+
+        let iU = u;
+        let iM = m;
+
+        if (animRunningRef.current && animLastTickRef.current > 0) {
+          const elapsedRealS = (Date.now() - animLastTickRef.current) / 1000;
+          const elapsedSimS = Math.min(
+            elapsedRealS * animSpeedRef.current,
+            animTickDurRef.current * 0.98,
+          );
+          if (elapsedSimS > 0.01) {
+            iU = u.map(unit => {
+              if (unit.destroyed || unit.speed <= 0) return unit;
+              const [lat, lon] = destPoint(unit.lat, unit.lon, unit.heading, unit.speed * elapsedSimS / 3600);
+              return { ...unit, lat, lon };
+            });
+            iM = m.map(miss => {
+              if (miss.ticks_remaining <= 0) return miss;
+              const [lat, lon] = destPoint(miss.lat, miss.lon, miss.heading, miss.speed_kmh * elapsedSimS / 3600);
+              return { ...miss, lat, lon };
+            });
+          }
+        }
+
+        const sd = (id: string, data: MapData) =>
+          (map.getSource(id) as maplibregl.GeoJSONSource)?.setData(data);
+
+        sd('units', unitFC(iU));
+        sd('sel-unit', selectedFC(iU, selUnit));
+        sd('missile-head', missileHeadFC(iM));
+        sd('missile-trail', missileTrailFC(iM));
+        sd('missile-target-line', missileTargetLineFC(iM, iU, selMissile));
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [mapReady]);
 
   return <div ref={mapContainer} style={{ position: 'absolute', inset: 0 }} />;
 }

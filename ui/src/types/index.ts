@@ -142,6 +142,8 @@ export interface SimState {
   missiles: SimMissile[];
   blue_detected_missiles: string[];
   red_detected_missiles: string[];
+  tick_duration_s: number;
+  speed_multiplier: number;
 }
 
 export type WsOutMessage =
