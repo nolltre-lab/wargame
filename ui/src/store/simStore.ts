@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { SimState, Unit, Objective, CombatEvent, SideGoal } from '../types';
+import type { SimState, Unit, Objective, CombatEvent, SideGoal, SimMissile } from '../types';
 
 const MAX_LOG_EVENTS = 50;
 
@@ -18,6 +18,7 @@ interface SimStore extends Omit<SimState, 'events'> {
   setGoals: (side: 'blue' | 'red', goals: SideGoal[]) => void;
 }
 
+
 export const useSimStore = create<SimStore>((set, get) => ({
   sim_time: '',
   tick: 0,
@@ -27,6 +28,9 @@ export const useSimStore = create<SimStore>((set, get) => ({
   blue_detected: [],
   red_detected: [],
   goals: { blue: [], red: [] },
+  missiles: [],
+  blue_detected_missiles: [],
+  red_detected_missiles: [],
   latestEvents: [],
   eventLog: [],
   selectedUnitId: null,
@@ -50,6 +54,9 @@ export const useSimStore = create<SimStore>((set, get) => ({
         blue_detected: state.blue_detected ?? [],
         red_detected: state.red_detected ?? [],
         goals: state.goals ?? prev.goals,
+        missiles: state.missiles ?? [],
+        blue_detected_missiles: state.blue_detected_missiles ?? [],
+        red_detected_missiles: state.red_detected_missiles ?? [],
         latestEvents: incoming,
         eventLog: newLog,
       };

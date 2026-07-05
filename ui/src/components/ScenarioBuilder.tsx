@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { BuilderMap } from './BuilderMap';
 import type { BuilderUnit, BuilderMission, MissionType, UnitTypeInfo, UnitClass, Objective, TheaterInfo } from '../types';
 import { sidcForUnit } from '../lib/milsymbol';
@@ -7,6 +7,21 @@ function nearestObjective(lat: number, lon: number, objs: Objective[], types: Ob
   const candidates = objs.filter(o => types.includes(o.type));
   if (candidates.length === 0) return null;
   return candidates.reduce((best, o) =>
+    Math.hypot(o.lat - lat, o.lon - lon) < Math.hypot(best.lat - lat, best.lon - lon) ? o : best
+  );
+}
+
+// Nearest airfield/base that belongs to `side` (never enemy-controlled).
+// Prefers same-side objectives; falls back to neutral (uncontrolled) ones.
+function nearestAirbase(lat: number, lon: number, objs: Objective[], side: 'blue' | 'red'): Objective | null {
+  const enemy = side === 'blue' ? 'red' : 'blue';
+  const pool = objs.filter(o =>
+    (o.type === 'airfield' || o.type === 'base') && o.controlling_side !== enemy
+  );
+  if (pool.length === 0) return null;
+  const friendly = pool.filter(o => o.controlling_side === side);
+  const search = friendly.length > 0 ? friendly : pool;
+  return search.reduce((best, o) =>
     Math.hypot(o.lat - lat, o.lon - lon) < Math.hypot(best.lat - lat, best.lon - lon) ? o : best
   );
 }
@@ -43,8 +58,27 @@ export function ScenarioBuilder({ onExit }: Props) {
   const [scenarioName, setScenarioName] = useState('my_scenario');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const [rings, setRings] = useState({ sensor: false, airWeapon: false, surfaceWeapon: false });
+  const [rings, setRings] = useState({ sensor: false, airWeapon: false, surfaceWeapon: false, territory: false });
   const toggleRing = (k: keyof typeof rings) => setRings(r => ({ ...r, [k]: !r[k] }));
+  const [coalitions, setCoalitions] = useState<Record<string, 'blue' | 'red' | null>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+    basemaps: false, coalitions: false, unitpicker: false,
+    placed: false, selected: false, load: true, save: false,
+  });
+  const toggleSection = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const objectiveCountries = useMemo(() =>
+    [...new Set(objectives.map(o => o.country).filter(Boolean) as string[])].sort(),
+    [objectives]
+  );
+
+  const handleCoalitionChange = useCallback((country: string, side: 'blue' | 'red' | null) => {
+    const next = { ...coalitions, [country]: side };
+    setCoalitions(next);
+    setObjectives(prev => prev.map(obj =>
+      obj.country === country ? { ...obj, controlling_side: side } : obj
+    ));
+  }, [coalitions]);
 
   // ── Escape cancels active placement ──────────────────────────────────────
   useEffect(() => {
@@ -98,6 +132,12 @@ export function ScenarioBuilder({ onExit }: Props) {
       }));
       setPlacedUnits(loaded);
       setObjectives(data.objectives ?? []);
+      // Restore coalition assignments from saved JSON
+      const savedCo = data.coalitions ?? { blue: [], red: [] };
+      const restoredCoalitions: Record<string, 'blue' | 'red' | null> = {};
+      (savedCo.blue ?? []).forEach((c: string) => { restoredCoalitions[c] = 'blue'; });
+      (savedCo.red ?? []).forEach((c: string) => { restoredCoalitions[c] = 'red'; });
+      setCoalitions(restoredCoalitions);
       setScenarioName(filename.replace(/\.json$/, ''));
       setSelectedId(null);
       setPlacingType(null);
@@ -110,12 +150,21 @@ export function ScenarioBuilder({ onExit }: Props) {
   const loadTheater = useCallback(async (id: string) => {
     try {
       const data = await fetch(`${API}/theaters/${encodeURIComponent(id)}`).then(r => r.json());
-      setObjectives(data.objectives ?? []);
+      // Build coalition state from theater defaults
+      const defCo = data.default_coalitions ?? { blue: [], red: [] };
+      const theaterCoalitions: Record<string, 'blue' | 'red' | null> = {};
+      (defCo.blue ?? []).forEach((c: string) => { theaterCoalitions[c] = 'blue'; });
+      (defCo.red ?? []).forEach((c: string) => { theaterCoalitions[c] = 'red'; });
+      setCoalitions(theaterCoalitions);
+      // Apply coalition assignments to objectives
+      const objs: Objective[] = data.objectives ?? [];
+      setObjectives(objs.map(obj =>
+        obj.country ? { ...obj, controlling_side: theaterCoalitions[obj.country] ?? null } : obj
+      ));
       setPlacedUnits([]);
       setSelectedId(null);
       setPlacingType(null);
       setScenarioName(`${id}_scenario`);
-      // Fly the map to the theater center [lon, lat]
       if (data.center && data.zoom) {
         setFlyTo({ center: data.center as [number, number], zoom: data.zoom });
       }
@@ -134,19 +183,14 @@ export function ScenarioBuilder({ onExit }: Props) {
     let placeLon = lon;
     const isAir = info.unit_class === 'air';
 
-    // Ground-based air units must snap to the nearest airfield / base objective.
-    // If no suitable objective exists, block placement and warn.
+    // Ground-based air units snap to the nearest friendly (or neutral) airfield/base.
+    // Enemy-controlled bases are never used.
     if (isAir) {
-      const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
-      if (airfields.length === 0) {
-        alert('No airfields or bases on the map. Add an airfield objective first, or set the unit to AIRBORNE.');
+      const nearest = nearestAirbase(lat, lon, objectives, activeSide);
+      if (!nearest) {
+        alert(`No friendly or neutral airfields/bases on the map for ${activeSide.toUpperCase()}. Add one first, or set the unit to AIRBORNE.`);
         return;
       }
-      // Snap to the nearest airfield (Euclidean on lat/lon is close enough at this scale)
-      const nearest = airfields.reduce((best, o) => {
-        const d = Math.hypot(o.lat - lat, o.lon - lon);
-        return d < Math.hypot(best.lat - lat, best.lon - lon) ? o : best;
-      });
       placeLat = nearest.lat;
       placeLon = nearest.lon;
     }
@@ -199,15 +243,10 @@ export function ScenarioBuilder({ onExit }: Props) {
   const handleUnitMove = useCallback((id: string, lat: number, lon: number) => {
     setPlacedUnits(prev => prev.map(u => {
       if (u.id !== id) return u;
-      // Ground-based air units must stay at an airfield — snap to nearest
+      // Ground-based air units stay at a friendly/neutral airfield — snap to nearest
       if (u.unit_class === 'air' && !u.airborne) {
-        const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
-        if (airfields.length > 0) {
-          const nearest = airfields.reduce((best, o) =>
-            Math.hypot(o.lat - lat, o.lon - lon) < Math.hypot(best.lat - lat, best.lon - lon) ? o : best
-          );
-          return { ...u, lat: nearest.lat, lon: nearest.lon };
-        }
+        const nearest = nearestAirbase(lat, lon, objectives, u.side);
+        if (nearest) return { ...u, lat: nearest.lat, lon: nearest.lon };
       }
       return { ...u, lat, lon };
     }));
@@ -226,6 +265,10 @@ export function ScenarioBuilder({ onExit }: Props) {
       name: scenarioName,
       start_time: '2024-06-15T04:00:00Z',
       tick_duration_seconds: 60,
+      coalitions: {
+        blue: Object.entries(coalitions).filter(([, v]) => v === 'blue').map(([k]) => k),
+        red:  Object.entries(coalitions).filter(([, v]) => v === 'red').map(([k]) => k),
+      },
       objectives,
       units: placedUnits.map(u => ({
         id:            u.id,
@@ -268,7 +311,7 @@ export function ScenarioBuilder({ onExit }: Props) {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  }, [scenarioName, placedUnits, objectives]);
+  }, [scenarioName, placedUnits, objectives, coalitions]);
 
   // ── Load in sim ───────────────────────────────────────────────────────────
   const loadInSim = useCallback(async () => {
@@ -302,21 +345,32 @@ export function ScenarioBuilder({ onExit }: Props) {
     flexDirection: 'column',
     background: 'rgba(6, 10, 18, 0.97)',
     borderRight: '1px solid #1e2e4a',
-    overflow: 'hidden',
+    overflowY: 'auto',
+    overflowX: 'hidden',
     ...MONO,
     fontSize: 12,
     color: '#8aa8c8',
   };
 
-  const sectionHead: React.CSSProperties = {
-    padding: '8px 12px',
+  const sectionHead = (key: string): React.CSSProperties => ({
+    padding: '7px 12px',
     fontSize: 10,
     letterSpacing: 2,
     color: '#4a6a8a',
-    borderBottom: '1px solid #1e2e4a',
+    borderBottom: collapsed[key] ? 'none' : '1px solid #1e2e4a',
     borderTop: '1px solid #1e2e4a',
-    marginTop: 4,
-  };
+    marginTop: 2,
+    cursor: 'pointer',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    userSelect: 'none',
+    flexShrink: 0,
+  });
+
+  const chevron = (key: string) => (
+    <span style={{ fontSize: 8, color: '#3a5a7a' }}>{collapsed[key] ? '▶' : '▼'}</span>
+  );
 
   const btn = (active: boolean, color = '#4488ff'): React.CSSProperties => ({
     background: active ? `${color}22` : 'transparent',
@@ -359,105 +413,165 @@ export function ScenarioBuilder({ onExit }: Props) {
         <div style={sidebarStyle}>
 
           {/* Base maps / theater picker */}
-          <div style={{ ...sectionHead, marginTop: 0, borderTop: 'none' }}>BASE MAPS</div>
-          <div style={{ padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {theaters.length === 0 && (
-              <div style={{ color: '#3a5a7a', fontSize: 11 }}>Loading…</div>
-            )}
-            {theaters.map(t => (
-              <button
-                key={t.id}
-                onClick={() => loadTheater(t.id)}
-                title={t.description}
-                style={{
-                  background: '#0a1525',
-                  border: '1px solid #1e3a5a',
-                  color: '#4a8ac8',
-                  ...MONO, fontSize: 11,
-                  padding: '5px 10px',
-                  cursor: 'pointer',
-                  letterSpacing: 1,
-                  textAlign: 'left',
-                }}
-              >
-                ◉  {t.name}
-              </button>
-            ))}
+          <div style={{ ...sectionHead('basemaps'), marginTop: 0, borderTop: 'none' }} onClick={() => toggleSection('basemaps')}>
+            <span>BASE MAPS</span>{chevron('basemaps')}
           </div>
-
-          {/* Class filter */}
-          <div style={{ display: 'flex', gap: 4, padding: '8px 12px' }}>
-            {(['all', 'air', 'ground', 'naval'] as const).map(c => (
-              <button key={c} onClick={() => setClassFilter(c)}
-                style={{ ...btn(classFilter === c), fontSize: 10, padding: '3px 7px' }}>
-                {c === 'all' ? 'ALL' : CLASS_LABEL[c as UnitClass]}
-              </button>
-            ))}
-          </div>
-
-          {/* Unit type list */}
-          <div style={{ overflowY: 'auto', flex: '0 0 auto', maxHeight: '38%' }}>
-            {filteredTypes.map(([type, info]) => {
-              const isActive = placingType === type;
-              return (
-                <div
-                  key={type}
-                  onClick={() => setPlacingType(isActive ? null : type)}
+          {!collapsed['basemaps'] && (
+            <div style={{ padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {theaters.length === 0 && (
+                <div style={{ color: '#3a5a7a', fontSize: 11 }}>Loading…</div>
+              )}
+              {theaters.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => loadTheater(t.id)}
+                  title={t.description}
                   style={{
-                    padding: '6px 12px',
+                    background: '#0a1525',
+                    border: '1px solid #1e3a5a',
+                    color: '#4a8ac8',
+                    ...MONO, fontSize: 11,
+                    padding: '5px 10px',
                     cursor: 'pointer',
-                    background: isActive ? `${SIDE_COLOR[activeSide]}18` : 'transparent',
-                    borderLeft: `3px solid ${isActive ? SIDE_COLOR[activeSide] : 'transparent'}`,
-                    color: isActive ? SIDE_COLOR[activeSide] : '#8aa8c8',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    letterSpacing: 1,
+                    textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontSize: 11 }}>{info.display_name}</span>
-                  <span style={{ fontSize: 10, color: '#4a6a8a' }}>
-                    {CLASS_LABEL[info.unit_class]}
-                  </span>
+                  ◉  {t.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Coalition editor — shown when objectives with countries are loaded */}
+          {objectiveCountries.length > 0 && (
+            <>
+              <div style={sectionHead('coalitions')} onClick={() => toggleSection('coalitions')}>
+                <span>COALITIONS</span>{chevron('coalitions')}
+              </div>
+              {!collapsed['coalitions'] && (
+                <div style={{ padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {objectiveCountries.map(country => {
+                    const side = coalitions[country] ?? null;
+                    return (
+                      <div key={country} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ flex: 1, fontSize: 10, color: '#8aa8c8', letterSpacing: 1, textTransform: 'uppercase' }}>
+                          {country}
+                        </span>
+                        {(['blue', null, 'red'] as const).map(s => (
+                          <button
+                            key={String(s)}
+                            onClick={() => handleCoalitionChange(country, s)}
+                            style={{
+                              background: side === s
+                                ? (s === 'blue' ? '#001030' : s === 'red' ? '#200008' : '#101010')
+                                : 'transparent',
+                              border: `1px solid ${side === s
+                                ? (s === 'blue' ? '#4488ff' : s === 'red' ? '#ff4444' : '#888888')
+                                : '#1e2e4a'}`,
+                              color: side === s
+                                ? (s === 'blue' ? '#4488ff' : s === 'red' ? '#ff4444' : '#888888')
+                                : '#2a4a6a',
+                              ...MONO, fontSize: 9, padding: '2px 6px', cursor: 'pointer', letterSpacing: 1,
+                            }}
+                          >
+                            {s === null ? '—' : s === 'blue' ? 'BLU' : 'RED'}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              )}
+            </>
+          )}
+
+          {/* Unit picker header */}
+          <div style={sectionHead('unitpicker')} onClick={() => toggleSection('unitpicker')}>
+            <span>UNIT PICKER{placingType ? ` · ${unitTypes[placingType]?.display_name ?? placingType}` : ''}</span>
+            {chevron('unitpicker')}
           </div>
+          {!collapsed['unitpicker'] && (
+            <>
+              {/* Class filter */}
+              <div style={{ display: 'flex', gap: 4, padding: '6px 12px' }}>
+                {(['all', 'air', 'ground', 'naval'] as const).map(c => (
+                  <button key={c} onClick={() => setClassFilter(c)}
+                    style={{ ...btn(classFilter === c), fontSize: 10, padding: '3px 7px' }}>
+                    {c === 'all' ? 'ALL' : CLASS_LABEL[c as UnitClass]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Unit type list */}
+              <div style={{ overflowY: 'auto', maxHeight: 220 }}>
+                {filteredTypes.map(([type, info]) => {
+                  const isActive = placingType === type;
+                  return (
+                    <div
+                      key={type}
+                      onClick={() => setPlacingType(isActive ? null : type)}
+                      style={{
+                        padding: '5px 12px',
+                        cursor: 'pointer',
+                        background: isActive ? `${SIDE_COLOR[activeSide]}18` : 'transparent',
+                        borderLeft: `3px solid ${isActive ? SIDE_COLOR[activeSide] : 'transparent'}`,
+                        color: isActive ? SIDE_COLOR[activeSide] : '#8aa8c8',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ fontSize: 11 }}>{info.display_name}</span>
+                      <span style={{ fontSize: 10, color: '#4a6a8a' }}>
+                        {CLASS_LABEL[info.unit_class]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {/* Placed units */}
-          <div style={sectionHead}>PLACED UNITS ({placedUnits.length})</div>
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {placedUnits.length === 0 && (
-              <div style={{ padding: '10px 12px', color: '#3a5a7a', fontSize: 11 }}>
-                {placingType ? 'Click map to place unit' : 'Select a unit type above'}
-              </div>
-            )}
-            {placedUnits.map(u => (
-              <div
-                key={u.id}
-                onClick={() => handleUnitClick(u.id)}
-                style={{
-                  padding: '5px 12px', cursor: 'pointer',
-                  background: selectedId === u.id ? '#1a2a3a' : 'transparent',
-                  borderLeft: `3px solid ${selectedId === u.id ? '#00ffff' : 'transparent'}`,
-                  display: 'flex', gap: 8, alignItems: 'center',
-                }}
-              >
-                <span style={{
-                  fontSize: 10, padding: '1px 5px',
-                  border: `1px solid ${SIDE_COLOR[u.side]}`,
-                  color: SIDE_COLOR[u.side],
-                }}>
-                  {u.side === 'blue' ? 'B' : 'R'}
-                </span>
-                <span style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {unitTypes[u.unit_type]?.display_name ?? u.unit_type}
-                </span>
-                {u.unit_class === 'air' && (
-                  <span style={{ fontSize: 9, color: u.airborne ? '#4488ff' : '#ddaa22', letterSpacing: 0 }}>
-                    {u.airborne ? '✈' : '⬛'}
-                  </span>
-                )}
-              </div>
-            ))}
+          <div style={sectionHead('placed')} onClick={() => toggleSection('placed')}>
+            <span>PLACED UNITS ({placedUnits.length})</span>{chevron('placed')}
           </div>
+          {!collapsed['placed'] && (
+            <div style={{ overflowY: 'auto', maxHeight: 200 }}>
+              {placedUnits.length === 0 && (
+                <div style={{ padding: '10px 12px', color: '#3a5a7a', fontSize: 11 }}>
+                  {placingType ? 'Click map to place unit' : 'Select a unit type above'}
+                </div>
+              )}
+              {placedUnits.map(u => (
+                <div
+                  key={u.id}
+                  onClick={() => handleUnitClick(u.id)}
+                  style={{
+                    padding: '5px 12px', cursor: 'pointer',
+                    background: selectedId === u.id ? '#1a2a3a' : 'transparent',
+                    borderLeft: `3px solid ${selectedId === u.id ? '#00ffff' : 'transparent'}`,
+                    display: 'flex', gap: 8, alignItems: 'center',
+                  }}
+                >
+                  <span style={{
+                    fontSize: 10, padding: '1px 5px',
+                    border: `1px solid ${SIDE_COLOR[u.side]}`,
+                    color: SIDE_COLOR[u.side],
+                  }}>
+                    {u.side === 'blue' ? 'B' : 'R'}
+                  </span>
+                  <span style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {unitTypes[u.unit_type]?.display_name ?? u.unit_type}
+                  </span>
+                  {u.unit_class === 'air' && (
+                    <span style={{ fontSize: 9, color: u.airborne ? '#4488ff' : '#ddaa22', letterSpacing: 0 }}>
+                      {u.airborne ? '✈' : '⬛'}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Selected unit actions */}
           {selectedId && (() => {
@@ -467,7 +581,13 @@ export function ScenarioBuilder({ onExit }: Props) {
             const presets = typeInfo?.loadout_presets ?? {};
             const presetKeys = Object.keys(presets);
             return (
-              <div style={{ padding: '6px 12px', borderTop: '1px solid #1e2e4a', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <>
+              <div style={sectionHead('selected')} onClick={() => toggleSection('selected')}>
+                <span>UNIT CONFIG · {sel.name || typeInfo?.display_name || sel.unit_type}</span>
+                {chevron('selected')}
+              </div>
+              {!collapsed['selected'] && (
+              <div style={{ padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {/* Airborne toggle for air units */}
                 {sel.unit_class === 'air' && (
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -476,15 +596,11 @@ export function ScenarioBuilder({ onExit }: Props) {
                         key={String(val)}
                         onClick={() => {
                           if (val === false) {
-                            const airfields = objectives.filter(o => o.type === 'airfield' || o.type === 'base');
-                            if (airfields.length === 0) {
-                              alert('No airfields or bases on the map. Add an airfield objective first.');
+                            const nearest = nearestAirbase(sel.lat, sel.lon, objectives, sel.side);
+                            if (!nearest) {
+                              alert(`No friendly or neutral airfields/bases for ${sel.side.toUpperCase()}. Add one first.`);
                               return;
                             }
-                            const nearest = airfields.reduce((best, o) => {
-                              const d = Math.hypot(o.lat - sel.lat, o.lon - sel.lon);
-                              return d < Math.hypot(best.lat - sel.lat, best.lon - sel.lon) ? o : best;
-                            });
                             setPlacedUnits(prev => prev.map(u =>
                               u.id === selectedId
                                 ? { ...u, airborne: false, lat: nearest.lat, lon: nearest.lon, home_base_lat: nearest.lat, home_base_lon: nearest.lon }
@@ -621,59 +737,69 @@ export function ScenarioBuilder({ onExit }: Props) {
                   ✕  DELETE SELECTED
                 </button>
               </div>
+              )}
+              </>
             );
           })()}
 
           {/* Load scenario */}
-          <div style={sectionHead}>LOAD SCENARIO</div>
-          <div style={{ padding: '8px 12px', display: 'flex', gap: 6 }}>
-            <select
-              defaultValue=""
-              onChange={e => e.target.value && loadScenario(e.target.value)}
-              style={{
-                flex: 1, background: '#0a1020', border: '1px solid #1e2e4a',
-                color: '#8aa8c8', ...MONO, fontSize: 11, padding: '4px',
-              }}
-            >
-              <option value="" disabled>— choose file —</option>
-              {scenarios.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <div style={sectionHead('load')} onClick={() => toggleSection('load')}>
+            <span>LOAD SCENARIO</span>{chevron('load')}
           </div>
+          {!collapsed['load'] && (
+            <div style={{ padding: '8px 12px', display: 'flex', gap: 6 }}>
+              <select
+                defaultValue=""
+                onChange={e => e.target.value && loadScenario(e.target.value)}
+                style={{
+                  flex: 1, background: '#0a1020', border: '1px solid #1e2e4a',
+                  color: '#8aa8c8', ...MONO, fontSize: 11, padding: '4px',
+                }}
+              >
+                <option value="" disabled>— choose file —</option>
+                {scenarios.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Save */}
-          <div style={sectionHead}>SAVE AS</div>
-          <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input
-              value={scenarioName}
-              onChange={e => setScenarioName(e.target.value)}
-              placeholder="scenario_name"
-              style={{
-                background: '#0a1020', border: '1px solid #1e2e4a',
-                color: '#8aa8c8', ...MONO, fontSize: 11,
-                padding: '5px 8px', outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={save} style={{
-                flex: 1, padding: '5px',
-                background: saveStatus === 'saved' ? '#003318' : '#0a1525',
-                border: `1px solid ${saveStatus === 'error' ? '#cc2222' : saveStatus === 'saved' ? '#22cc66' : '#1e3a5a'}`,
-                color: saveStatus === 'error' ? '#cc4444' : saveStatus === 'saved' ? '#22cc66' : '#4a8ac8',
-                ...MONO, fontSize: 11, cursor: 'pointer', letterSpacing: 1,
-              }}>
-                {saveStatus === 'saving' ? '...' : saveStatus === 'saved' ? '✓ SAVED' : saveStatus === 'error' ? '✗ ERROR' : '💾 SAVE'}
-              </button>
-              <button onClick={loadInSim} style={{
-                flex: 1, padding: '5px',
-                background: '#001a10',
-                border: '1px solid #226644',
-                color: '#44aa77',
-                ...MONO, fontSize: 11, cursor: 'pointer', letterSpacing: 1,
-              }}>
-                ▶ PLAY
-              </button>
-            </div>
+          <div style={sectionHead('save')} onClick={() => toggleSection('save')}>
+            <span>SAVE / PLAY</span>{chevron('save')}
           </div>
+          {!collapsed['save'] && (
+            <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <input
+                value={scenarioName}
+                onChange={e => setScenarioName(e.target.value)}
+                placeholder="scenario_name"
+                style={{
+                  background: '#0a1020', border: '1px solid #1e2e4a',
+                  color: '#8aa8c8', ...MONO, fontSize: 11,
+                  padding: '5px 8px', outline: 'none',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={save} style={{
+                  flex: 1, padding: '5px',
+                  background: saveStatus === 'saved' ? '#003318' : '#0a1525',
+                  border: `1px solid ${saveStatus === 'error' ? '#cc2222' : saveStatus === 'saved' ? '#22cc66' : '#1e3a5a'}`,
+                  color: saveStatus === 'error' ? '#cc4444' : saveStatus === 'saved' ? '#22cc66' : '#4a8ac8',
+                  ...MONO, fontSize: 11, cursor: 'pointer', letterSpacing: 1,
+                }}>
+                  {saveStatus === 'saving' ? '...' : saveStatus === 'saved' ? '✓ SAVED' : saveStatus === 'error' ? '✗ ERROR' : '💾 SAVE'}
+                </button>
+                <button onClick={loadInSim} style={{
+                  flex: 1, padding: '5px',
+                  background: '#001a10',
+                  border: '1px solid #226644',
+                  color: '#44aa77',
+                  ...MONO, fontSize: 11, cursor: 'pointer', letterSpacing: 1,
+                }}>
+                  ▶ PLAY
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
 
@@ -701,9 +827,10 @@ export function ScenarioBuilder({ onExit }: Props) {
           }}>
             <span style={{ color: '#4a6a8a', letterSpacing: 1, marginRight: 4, alignSelf: 'center' }}>RANGES</span>
             {([
-              ['sensor',       'SENSOR',   '#4488ff'] as const,
-              ['airWeapon',    'A-A/S-A',  '#ff8800'] as const,
-              ['surfaceWeapon','A-S/S-S',  '#ff3300'] as const,
+              ['sensor',       'SENSOR',    '#4488ff'] as const,
+              ['airWeapon',    'A-A/S-A',   '#ff8800'] as const,
+              ['surfaceWeapon','A-S/S-S',   '#ff3300'] as const,
+              ['territory',    'TERRITORY', '#44cc88'] as const,
             ] as const).map(([key, label, color]) => (
               <button key={key} onClick={() => toggleRing(key)} style={{
                 background: rings[key] ? `${color}22` : 'transparent',

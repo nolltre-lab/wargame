@@ -18,4 +18,5 @@ class Objective(BaseModel):
     lat: float
     lon: float
     type: ObjectiveType
-    controlling_side: Optional[str] = None  # "blue" | "red" | None (contested)
+    controlling_side: Optional[str] = None  # "blue" | "red" | None (neutral/contested)
+    country: Optional[str] = None           # e.g. "estonia", "russia" — drives coalition assignment

@@ -27,37 +27,149 @@ PATROL_POINTS = 4
 # Ticks to fully rearm/refuel at home base when not in unit_types.json
 _REARM_TICKS_DEFAULT: Dict[str, int] = {"air": 8, "ground": 5, "naval": 12}
 
+# Ticks in the loadout-selection window after arriving at base, before rearm begins.
+# Commander AI and player can both change loadout during this window; if nothing
+# changes the unit re-arms with its existing loadout.
+LOADOUT_SELECTION_TICKS = 2
+
 # Minimum fuel safety buffer added on top of the calculated transit cost (%)
-BINGO_SAFETY_BUFFER_PCT = 12.0
+BINGO_SAFETY_BUFFER_PCT = 15.0
+
+# Neutral airspace routing adds detour distance.  Straight-line haversine
+# underestimates the actual routed path; this factor corrects for that.
+# Kaliningrad→Gulf-of-Finland via Latvia is ~30% longer than direct.
+ROUTE_COST_FACTOR_AIR = 1.3
+
+# Default cruise speed as a fraction of max_speed when not in unit_types.json
+_CRUISE_SPEED_FRACTION = {"air": 0.70, "naval": 0.60}
+# Default fuel burn multiplier at cruise speed
+_CRUISE_FUEL_FACTOR    = {"air": 0.35, "naval": 0.40}
 
 # Tick duration in sim-seconds (used to convert speed → km/tick for fuel estimation)
 _TICK_DURATION_S = 60.0
 
-# Fallback static bingo threshold when no home base is recorded
-_BINGO_FALLBACK_PCT = 25.0
-
 _FUEL_BURN_MOVING = {"air": 1.5, "ground": 0.1, "naval": 0.2}
 
+# Objective types each unit class can use as a base, unless overridden by
+# "valid_base_types" in unit_types.json.  Add that key to restrict a type
+# further (e.g. heavy transports that need major runways only → ["airfield"]).
+_DEFAULT_BASE_TYPES: Dict[str, set] = {
+    "air":    {"airfield"},
+    "naval":  {"port", "base"},
+    "ground": {"base"},
+}
 
-def _bingo_threshold(unit: Unit) -> float:
-    """
-    Dynamic bingo fuel level: fuel % needed to reach home base at full speed
-    plus BINGO_SAFETY_BUFFER_PCT.  Falls back to _BINGO_FALLBACK_PCT when the
-    unit has no home base or speed is unknown.
-    """
-    if unit.home_base_lat is None or unit.home_base_lon is None:
-        return _BINGO_FALLBACK_PCT
 
-    dist_km = haversine(unit.lat, unit.lon, unit.home_base_lat, unit.home_base_lon)
-    speed_kmh = unit.max_speed if unit.max_speed > 0 else 500.0
+def _valid_base_types(unit: Unit) -> set:
+    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+    if "valid_base_types" in lib:
+        return set(lib["valid_base_types"])
+    return _DEFAULT_BASE_TYPES.get(unit.unit_class.value, {"base"})
+
+
+def _nearest_friendly_base(unit: Unit, objectives: Dict[str, "Objective"]) -> "Optional[Objective]":
+    """
+    Nearest objective of a type this unit can use that is controlled by the
+    unit's own side.  Used for planned RTB / rearm — friendly bases only.
+    """
+    valid = _valid_base_types(unit)
+    candidates = [
+        o for o in objectives.values()
+        if o.controlling_side == unit.side.value and o.type.value in valid
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda o: haversine(unit.lat, unit.lon, o.lat, o.lon))
+
+
+def _nearest_emergency_base(unit: Unit, objectives: Dict[str, "Objective"]) -> "Optional[Objective]":
+    """
+    Last-resort landing: nearest non-enemy base (own or neutral) when no
+    friendly base exists and fuel is critically low.  Unit refuels only — no
+    magazine reload (controlled by unit.refuel_only flag).
+    """
+    enemy_side = "red" if unit.side.value == "blue" else "blue"
+    valid = _valid_base_types(unit)
+    candidates = [
+        o for o in objectives.values()
+        if o.controlling_side != enemy_side and o.type.value in valid
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda o: haversine(unit.lat, unit.lon, o.lat, o.lon))
+
+
+# Below this fuel level, divert to any non-enemy base even if no friendly one exists
+EMERGENCY_FUEL_PCT = 5.0
+
+
+def _bingo_threshold(unit: Unit, objectives: Dict[str, "Objective"]) -> float:
+    """
+    Dynamic bingo fuel level: % needed to reach the nearest usable base at
+    full speed plus BINGO_SAFETY_BUFFER_PCT.  Returns 0.0 (never trigger) if
+    no base is reachable anywhere — no point RTBing to nowhere.
+
+    Priority: nearest non-enemy objective of valid type → home_base_lat/lon fallback.
+    """
+    base = _nearest_friendly_base(unit, objectives)
+    if base is not None:
+        dest_lat, dest_lon = base.lat, base.lon
+    elif unit.home_base_lat is not None and unit.home_base_lon is not None:
+        dest_lat, dest_lon = unit.home_base_lat, unit.home_base_lon
+    else:
+        return 0.0
+
+    dist_km = haversine(unit.lat, unit.lon, dest_lat, dest_lon)
+    if unit.unit_class == UnitClass.AIR:
+        dist_km *= ROUTE_COST_FACTOR_AIR
+
+    # Use cruise speed/burn for RTB estimate — units throttle back to save fuel
+    speed_kmh = _transit_speed(unit) if unit.unit_class != UnitClass.GROUND else (unit.max_speed or 500.0)
+    if speed_kmh <= 0:
+        speed_kmh = 500.0
     km_per_tick = speed_kmh * (_TICK_DURATION_S / 3600.0)
 
     lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
-    burn = lib.get("fuel_burn_per_tick",
-                   _FUEL_BURN_MOVING.get(unit.unit_class.value, 1.5))
+    base_burn = lib.get("fuel_burn_per_tick", _FUEL_BURN_MOVING.get(unit.unit_class.value, 1.5))
+    cruise_factor = lib.get("cruise_fuel_factor", _CRUISE_FUEL_FACTOR.get(unit.unit_class.value, 1.0))
+    burn = base_burn * cruise_factor
 
     ticks_needed = dist_km / km_per_tick if km_per_tick > 0 else 0.0
     return ticks_needed * burn + BINGO_SAFETY_BUFFER_PCT
+
+def fuel_roundtrip_pct(
+    unit: Unit,
+    dest_lat: float,
+    dest_lon: float,
+    objectives: Dict[str, "Objective"],
+) -> float:
+    """
+    Estimate the fuel % needed for unit to fly to (dest_lat, dest_lon) and
+    then back to its nearest friendly base.  Includes BINGO_SAFETY_BUFFER_PCT
+    and the air-unit route cost factor.  Used by the commander to reject
+    assignments a unit cannot afford.
+    """
+    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+    base_burn = lib.get("fuel_burn_per_tick", _FUEL_BURN_MOVING.get(unit.unit_class.value, 1.5))
+    cruise_factor = lib.get("cruise_fuel_factor", _CRUISE_FUEL_FACTOR.get(unit.unit_class.value, 1.0))
+    burn = base_burn * cruise_factor
+
+    speed_kmh = _transit_speed(unit) if unit.unit_class != UnitClass.GROUND else (unit.max_speed or 500.0)
+    if speed_kmh <= 0:
+        speed_kmh = 500.0
+    km_per_tick = speed_kmh * (_TICK_DURATION_S / 3600.0)
+
+    dist_to_dest = haversine(unit.lat, unit.lon, dest_lat, dest_lon)
+    base = _nearest_friendly_base(unit, objectives)
+    dist_home = haversine(dest_lat, dest_lon, base.lat, base.lon) if base else dist_to_dest
+
+    total_km = dist_to_dest + dist_home
+    if unit.unit_class == UnitClass.AIR:
+        total_km *= ROUTE_COST_FACTOR_AIR
+
+    ticks = total_km / km_per_tick if km_per_tick > 0 else 0.0
+    return ticks * burn + BINGO_SAFETY_BUFFER_PCT
+
 
 # Distance at which surveillance units (AWACS/MPA) detect and flee from enemy air threats
 SURVEILLANCE_FLEE_RANGE_KM = 200.0
@@ -72,6 +184,95 @@ def _patrol_circuit(center_lat: float, center_lon: float, radius_km: float) -> L
         destination(center_lat, center_lon, (360.0 / PATROL_POINTS) * i, radius_km)
         for i in range(PATROL_POINTS)
     ]
+
+
+def _territory_edge(
+    center_lat: float, center_lon: float,
+    hdg: float, radius_km: float,
+    neutral: frozenset,
+) -> Optional[Tuple[float, float]]:
+    """
+    Binary-search along the bearing `hdg` from center outward to radius_km.
+    Returns the farthest point that is NOT in neutral territory (land + 12nm sea/air),
+    or None if even the center is inside neutral territory (authorised mission).
+    """
+    if terrain.is_in_neutral_territory(center_lat, center_lon, neutral):
+        return None
+    lo, hi = 0.0, radius_km
+    for _ in range(15):
+        mid = (lo + hi) / 2.0
+        lat, lon = destination(center_lat, center_lon, hdg, mid)
+        if terrain.is_in_neutral_territory(lat, lon, neutral):
+            hi = mid
+        else:
+            lo = mid
+        if hi - lo < 1.0:
+            break
+    return destination(center_lat, center_lon, hdg, lo)
+
+
+def _routed_patrol_circuit(
+    unit: Unit,
+    center_lat: float,
+    center_lon: float,
+    radius_km: float,
+    neutral_countries: Optional[set],
+) -> List[Tuple[float, float]]:
+    """
+    Generate a patrol circuit respecting neutral territorial boundaries.
+    - AIR units respect 12nm territorial airspace (find_route_air).
+    - NAVAL units respect 12nm territorial waters (find_route_naval).
+    - GROUND units get the raw circuit unchanged.
+    Waypoints inside neutral territory are pulled back to the boundary edge.
+    If the patrol centre itself is inside neutral territory, it is relocated
+    to the nearest safe point on the line from the unit's current position.
+    """
+    raw_pts = _patrol_circuit(center_lat, center_lon, radius_km)
+    if not neutral_countries or unit.unit_class == UnitClass.GROUND:
+        return raw_pts
+
+    nc = frozenset(neutral_countries)
+
+    # If the patrol centre is in neutral territory, relocate it to the nearest
+    # safe point on the bearing from the unit's current position to the centre.
+    eff_lat, eff_lon = center_lat, center_lon
+    if terrain.is_in_neutral_territory(center_lat, center_lon, nc):
+        dist_to_ctr = haversine(unit.lat, unit.lon, center_lat, center_lon)
+        if dist_to_ctr > 0:
+            hdg_to_ctr = bearing(unit.lat, unit.lon, center_lat, center_lon)
+            edge = _territory_edge(unit.lat, unit.lon, hdg_to_ctr, dist_to_ctr, nc)
+            if edge is not None:
+                eff_lat, eff_lon = edge
+            # else: unit is also in neutral → authorised overflight; keep original centre
+        raw_pts = _patrol_circuit(eff_lat, eff_lon, radius_km)
+
+    # Adjust each circuit waypoint: if it lands in neutral territory, pull it
+    # back to the farthest safe point along that bearing from the circuit centre.
+    adjusted: List[Tuple[float, float]] = []
+    for lat, lon in raw_pts:
+        if terrain.is_in_neutral_territory(lat, lon, nc):
+            hdg = bearing(eff_lat, eff_lon, lat, lon)
+            edge = _territory_edge(eff_lat, eff_lon, hdg, radius_km, nc)
+            if edge is not None:
+                adjusted.append(edge)
+            # None means effective centre is in neutral → authorised; skip waypoint
+        else:
+            adjusted.append((lat, lon))
+
+    pts = adjusted if adjusted else raw_pts
+
+    # Route each leg avoiding neutral territory.
+    wps: List[Tuple[float, float]] = []
+    prev = (unit.lat, unit.lon)
+    if unit.unit_class == UnitClass.AIR:
+        for pt in pts:
+            wps.extend(terrain.find_route_air(prev[0], prev[1], pt[0], pt[1], nc))
+            prev = pt
+    else:  # NAVAL
+        for pt in pts:
+            wps.extend(terrain.find_route_naval(prev[0], prev[1], pt[0], pt[1], nc))
+            prev = pt
+    return wps or pts
 
 
 def _is_surveillance(unit: Unit) -> bool:
@@ -102,6 +303,27 @@ def _flee_waypoints(unit: Unit, units: Dict[str, Unit]) -> List[Tuple[float, flo
     return [(flee_lat, flee_lon)]
 
 
+_MAG_TO_TARGET_CLASS: Dict[str, str] = {"aa": "air", "ag": "ground", "as": "naval"}
+
+
+def _loadout_primary_target_class(unit: Unit) -> Optional[str]:
+    """
+    Return the enemy unit-class this loadout is optimised to attack.
+    Anti-ship loadout (most rounds = 'as') → 'naval'.
+    Air superiority (most rounds = 'aa') → 'air'.
+    Strike (most rounds = 'ag') → 'ground'.
+    Returns None when loadout is unset or has no magazine data.
+    """
+    if not unit.loadout:
+        return None
+    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+    preset_mags = lib.get("loadout_presets", {}).get(unit.loadout, {}).get("magazines", {})
+    if not preset_mags:
+        return None
+    primary = max(preset_mags, key=lambda k: preset_mags.get(k, 0))
+    return _MAG_TO_TARGET_CLASS.get(primary)
+
+
 def _nearest_valid_intercept_target(
     unit: Unit,
     all_units: Dict[str, Unit],
@@ -117,6 +339,10 @@ def _nearest_valid_intercept_target(
       GCI cue     → surveillance unit (AWACS/MPA) sees it and passes bearing/range
                     via voice/radio — unit navigates toward it but still needs own
                     sensor lock to engage (the combat gate enforces this)
+
+    Target selection is loadout-aware: an anti-ship F-35 prefers naval targets,
+    an air-superiority fighter prefers air targets.  Falls back to nearest of any
+    valid class if no preferred-class targets are visible.
 
     Naval units only chase naval targets to prevent ships routing overland.
     Returns None if the target is unknown through all available channels.
@@ -149,6 +375,16 @@ def _nearest_valid_intercept_target(
     visible = [c for c in candidates if c.id in known_ids]
     if not visible:
         return None
+
+    # Prefer targets matching the loadout's primary ammo class.
+    # An anti-ship F-35 hunts ships; an air-superiority fighter hunts aircraft.
+    preferred_class = _loadout_primary_target_class(unit)
+    if preferred_class:
+        preferred = [t for t in visible if t.unit_class.value == preferred_class]
+        if preferred:
+            return min(preferred, key=lambda u: haversine(unit.lat, unit.lon, u.lat, u.lon))
+
+    # No preferred-class targets visible — fall back to nearest of any valid class
     return min(visible, key=lambda u: haversine(unit.lat, unit.lon, u.lat, u.lon))
 
 
@@ -156,18 +392,67 @@ def _route_to(
     unit: Unit,
     dest_lat: float,
     dest_lon: float,
+    neutral_countries: Optional[set] = None,
 ) -> List[Tuple[float, float]]:
     """
-    Return waypoints from the unit's current position to dest. Ground units
-    route around water, naval units route around land — both via real
-    coastline data (terrain.find_route), valid anywhere on the map. Air units
-    fly direct, unconstrained by terrain.
+    Return waypoints from the unit's current position to dest.
+    Ground units route around water; naval around land (coastline A*).
+    Air units fly direct by default, but route around neutral country airspace
+    when neutral_countries is non-empty.
     """
     if unit.unit_class == UnitClass.GROUND:
         return terrain.find_route(unit.lat, unit.lon, dest_lat, dest_lon, domain="land")
     if unit.unit_class == UnitClass.NAVAL:
+        if neutral_countries:
+            return terrain.find_route_naval(unit.lat, unit.lon, dest_lat, dest_lon, neutral_countries)
         return terrain.find_route(unit.lat, unit.lon, dest_lat, dest_lon, domain="water")
+    if neutral_countries:
+        return terrain.find_route_air(unit.lat, unit.lon, dest_lat, dest_lon, neutral_countries)
     return [(dest_lat, dest_lon)]
+
+
+def _set_altitude_phase(unit: Unit, phase: str) -> None:
+    """
+    Update unit.altitude_m and unit.emcon based on mission phase.
+
+    'ingress': heading toward enemy ground/naval target — use low altitude to exploit
+               the radar horizon limit on surface and ground radars. Stealth aircraft
+               (stealth_emcon=true in unit_types) also go radar-silent so ESM can't
+               detect their emissions; they rely on data-link for targeting.
+
+    'cruise':  everything else (CAP, patrol, RTB, evasion, holding orbit) — use the
+               library cruise altitude and keep radar on.
+
+    NOTE: altitude also affects fuel efficiency (high altitude = thinner air = less burn).
+    That tradeoff is deferred to the fuel-optimization feature which will use per-leg
+    speed/burn rates and make altitude a conscious tactical choice.
+    """
+    if unit.unit_class != UnitClass.AIR or not unit.airborne:
+        return
+    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+    if phase == "ingress" and "altitude_ingress_m" in lib:
+        unit.altitude_m = float(lib["altitude_ingress_m"])
+        if lib.get("stealth_emcon", False):
+            unit.emcon = False
+    else:
+        unit.altitude_m = float(lib.get("altitude_m", unit.altitude_m))
+        unit.emcon = True
+
+
+def _transit_speed(unit: Unit) -> float:
+    """
+    Speed to use for non-combat transit (en route, RTB, patrol circuits).
+    Reads cruise_speed_kmh from the type library; falls back to a class-based
+    fraction of max_speed.  Ground units always use max_speed (distances are
+    short and fuel consumption is negligible).
+    """
+    if unit.unit_class == UnitClass.GROUND:
+        return unit.max_speed
+    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+    if "cruise_speed_kmh" in lib:
+        return float(lib["cruise_speed_kmh"])
+    frac = _CRUISE_SPEED_FRACTION.get(unit.unit_class.value, 1.0)
+    return unit.max_speed * frac
 
 
 def _is_winchester(unit: Unit) -> bool:
@@ -175,19 +460,49 @@ def _is_winchester(unit: Unit) -> bool:
     return bool(unit.magazines) and all(v == 0 for v in unit.magazines.values())
 
 
-def _should_auto_rtb(unit: Unit) -> Optional[str]:
+def _primary_ammo_depleted(unit: Unit) -> bool:
+    """
+    True when the loadout's *primary* ammo type is exhausted, even if secondary
+    ammo types remain.  Prevents e.g. an anti-ship F-35 from orbiting with its
+    last AA missile after all AS rounds are gone — the unit RTBs to rearm.
+
+    Primary = the ammo category with the most rounds in the active loadout preset.
+    Only applies to units that have an explicit loadout set.
+    """
+    if not unit.magazines or not unit.loadout:
+        return False
+    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+    preset = lib.get("loadout_presets", {}).get(unit.loadout, {})
+    preset_mags = preset.get("magazines", {})
+    if not preset_mags:
+        return False
+    primary = max(preset_mags, key=lambda k: preset_mags.get(k, 0))
+    return unit.magazines.get(primary, 0) == 0
+
+
+def _should_auto_rtb(unit: Unit, objectives: Dict[str, "Objective"]) -> Optional[str]:
     """
     Return the reason string if the unit should automatically RTB, else None.
-    Only air and naval units auto-RTB — ground units restock in place on player command.
-    Bingo threshold is dynamic: fuel needed to reach home base + safety buffer.
+    Only air and naval units auto-RTB — ground units restock in place.
+
+    Normal bingo: fuel needed to reach nearest FRIENDLY base + buffer.
+    Emergency bingo: critically low (EMERGENCY_FUEL_PCT) and any non-enemy
+    base exists (neutral ok) — routes there with refuel_only=True.
     """
     if unit.unit_class not in (UnitClass.AIR, UnitClass.NAVAL):
         return None
     if _is_winchester(unit):
         return "winchester"
+    if _primary_ammo_depleted(unit):
+        return "winchester"
     if unit.fuel_pct <= 0:
         return None
-    if unit.fuel_pct <= _bingo_threshold(unit):
+    if unit.fuel_pct <= _bingo_threshold(unit, objectives):
+        return "bingo"
+    # Emergency divert: no friendly base but critically low, any non-enemy base will do
+    if (unit.fuel_pct <= EMERGENCY_FUEL_PCT
+            and _nearest_friendly_base(unit, objectives) is None
+            and _nearest_emergency_base(unit, objectives) is not None):
         return "bingo"
     return None
 
@@ -199,6 +514,64 @@ _FLEE_KM  = 150.0  # direct retreat for mixed / ground threats
 
 # Notch is held for this many ticks before switching sides (creates realistic sustained jink)
 _NOTCH_JINK_PERIOD = 3
+
+# Standoff fire: hold at this fraction of weapon range (just inside own envelope)
+STANDOFF_FACTOR = 0.88
+# Approach angles evaluated when selecting the safest standoff point around a target
+_STANDOFF_N_ANGLES = 8
+# Distance to egress after expending all strike ammo (air units vs ground/naval targets)
+EGRESS_KM = 150.0
+
+
+def _standoff_approach_point(
+    unit: Unit,
+    target_lat: float,
+    target_lon: float,
+    standoff_dist: float,
+    all_units: Dict[str, Unit],
+) -> Tuple[float, float]:
+    """
+    Return the safest point at standoff_dist from (target_lat, target_lon).
+
+    Tests _STANDOFF_N_ANGLES evenly-spaced bearings and scores each by total
+    threat exposure: sum of max(0, enemy_weapon_range - dist_to_threat)² for
+    all live enemy units.  The attacker picks the angle that minimises how deeply
+    any standoff point penetrates enemy weapon envelopes.  When all angles are
+    equally dangerous (e.g. a surrounded unit) it still picks the least bad one.
+
+    By routing to this point rather than to target.lat/target.lon, units
+    naturally hold at weapon range — waypoints are consumed when the standoff
+    point is reached, triggering the on-station orbit on the following tick.
+    """
+    enemy_side = "red" if unit.side.value == "blue" else "blue"
+    threats = [u for u in all_units.values() if not u.destroyed and u.side.value == enemy_side]
+
+    best_pt: Optional[Tuple[float, float]] = None
+    best_cost = float("inf")
+
+    for i in range(_STANDOFF_N_ANGLES):
+        angle = (360.0 / _STANDOFF_N_ANGLES) * i
+        lat, lon = destination(target_lat, target_lon, angle, standoff_dist)
+
+        cost = 0.0
+        for threat in threats:
+            d = haversine(lat, lon, threat.lat, threat.lon)
+            threat_w = weapon_range(threat, unit.unit_class.value)
+            if d < threat_w:
+                penetration = threat_w - d
+                cost += penetration * penetration
+
+        if cost < best_cost:
+            best_cost = cost
+            best_pt = (lat, lon)
+
+    if best_pt is None:
+        # Fallback: direct approach bearing (no threats or zero-distance edge case)
+        dist_to_target = haversine(unit.lat, unit.lon, target_lat, target_lon)
+        hdg = bearing(target_lat, target_lon, unit.lat, unit.lon) if dist_to_target > 0.1 else 0.0
+        best_pt = destination(target_lat, target_lon, hdg, standoff_dist)
+
+    return best_pt
 
 
 def _unit_seed(unit: Unit) -> int:
@@ -263,6 +636,7 @@ def resolve_missions(
     objectives: Dict[str, Objective],
     under_fire: Dict[str, List[str]] | None = None,
     tick: int = 0,
+    neutral_countries: Optional[set] = None,
 ) -> List[dict]:
     if under_fire is None:
         under_fire = {}
@@ -301,13 +675,17 @@ def resolve_missions(
             continue
         if unit.rearming:
             continue  # being serviced at base — simulation._burn_resources handles tick-down
+        if unit.awaiting_loadout:
+            continue  # in loadout-selection window — simulation._burn_resources handles tick-down
 
-        # ── Ground auto-restock (winchester → rearm in place immediately) ───────
+        # Default to cruise altitude/EMCON at the top of each tick.
+        # INTERCEPT targeting ground/naval will override to ingress below.
+        _set_altitude_phase(unit, "cruise")
+
+        # ── Ground auto-restock (winchester → enter loadout-selection window) ────
         if unit.unit_class == UnitClass.GROUND and _is_winchester(unit):
-            lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
-            rearm_ticks = lib.get("rearm_ticks", _REARM_TICKS_DEFAULT.get("ground", 5))
-            unit.rearming = True
-            unit.rearm_ticks_left = rearm_ticks
+            unit.awaiting_loadout = True
+            unit.loadout_selection_ticks_left = LOADOUT_SELECTION_TICKS
             events.append({
                 "type": "winchester",
                 "unit_id": unit.id,
@@ -315,13 +693,13 @@ def resolve_missions(
                 "side": unit.side.value,
                 "tick": None,
             })
-            continue  # _burn_resources handles the tick-down
+            continue  # _burn_resources handles window tick-down → rearm transition
 
         # ── Air / naval auto-RTB (bingo fuel or winchester) ───────────────────
         m = unit.mission
         already_rtb = m is not None and m.type == MissionType.RTB
         if not already_rtb:
-            reason = _should_auto_rtb(unit)
+            reason = _should_auto_rtb(unit, objectives)
             if reason is not None:
                 unit.previous_mission = unit.mission  # saved for restore after rearm
                 unit.waypoints = []
@@ -368,7 +746,7 @@ def resolve_missions(
                     and not unit.waypoints
                     and unit.fuel_pct > 0.0):
                 unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
-                unit.speed = unit.max_speed
+                unit.speed = _transit_speed(unit)
             continue
 
         if m.type in (MissionType.SECURE, MissionType.DEFEND):
@@ -383,8 +761,8 @@ def resolve_missions(
                 unit.speed = 0.0
                 unit.waypoints = []
             elif not unit.waypoints:
-                unit.waypoints = _route_to(unit, obj.lat, obj.lon)
-                unit.speed = unit.max_speed
+                unit.waypoints = _route_to(unit, obj.lat, obj.lon, neutral_countries)
+                unit.speed = _transit_speed(unit)
                 m.status = MissionStatus.EN_ROUTE
 
         elif m.type == MissionType.PATROL:
@@ -394,9 +772,10 @@ def resolve_missions(
             radius = PATROL_RADIUS_KM[unit.unit_class.value]
 
             if not unit.waypoints:
-                # Regenerates circuit each time — creates continuous looping patrol
-                unit.waypoints = _patrol_circuit(obj.lat, obj.lon, radius)
-                unit.speed = unit.max_speed
+                unit.waypoints = _routed_patrol_circuit(
+                    unit, obj.lat, obj.lon, radius, neutral_countries
+                )
+                unit.speed = _transit_speed(unit)
                 m.status = MissionStatus.ON_STATION
 
         elif m.type == MissionType.AREA_PATROL:
@@ -404,8 +783,10 @@ def resolve_missions(
                 continue  # mission not fully specified
             radius = PATROL_RADIUS_KM[unit.unit_class.value]
             if not unit.waypoints:
-                unit.waypoints = _patrol_circuit(m.patrol_lat, m.patrol_lon, radius)
-                unit.speed = unit.max_speed
+                unit.waypoints = _routed_patrol_circuit(
+                    unit, m.patrol_lat, m.patrol_lon, radius, neutral_countries
+                )
+                unit.speed = _transit_speed(unit)
                 m.status = MissionStatus.ON_STATION
 
         elif m.type == MissionType.INTERCEPT:
@@ -415,18 +796,55 @@ def resolve_missions(
                 gci_ids=gci_ids.get(unit.side.value),
             )
             if target is None:
+                # No enemy in sensor picture yet — hold orbit and wait for detection.
+                if unit.unit_class == UnitClass.AIR and unit.airborne:
+                    if not unit.waypoints:
+                        unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
+                    unit.speed = _transit_speed(unit)
                 continue
+
+            if target.unit_class.value in ("ground", "naval"):
+                _set_altitude_phase(unit, "ingress")
+
             dist = haversine(unit.lat, unit.lon, target.lat, target.lon)
-            w_range = weapon_range(unit)
+            w_range = weapon_range(unit, target.unit_class.value)
 
             if dist <= w_range:
-                # Already in weapon range — hold position, combat handles the rest
-                unit.waypoints = []
-                unit.speed = 0.0
                 m.status = MissionStatus.ON_STATION
+                if unit.unit_class == UnitClass.AIR and unit.airborne:
+                    if target.unit_class.value in ("ground", "naval"):
+                        # Strike platform on station: egress immediately once strike ammo is gone.
+                        # While ammo remains, orbit at current standoff position and keep firing.
+                        relevant_ammo = unit.magazines.get("ag", 0) + unit.magazines.get("as", 0)
+                        if unit.magazines and relevant_ammo == 0:
+                            egress_hdg = bearing(target.lat, target.lon, unit.lat, unit.lon)
+                            egress_lat, egress_lon = destination(unit.lat, unit.lon, egress_hdg, EGRESS_KM)
+                            unit.waypoints = _route_to(unit, egress_lat, egress_lon, neutral_countries)
+                            unit.speed = unit.max_speed
+                        elif not unit.waypoints:
+                            unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
+                            unit.speed = _transit_speed(unit)
+                    else:
+                        # Air-to-air: orbit for continuous BVR engagement
+                        if not unit.waypoints:
+                            unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
+                            unit.speed = _transit_speed(unit)
+                else:
+                    # Ground/naval: stop at standoff position and fire from there
+                    unit.waypoints = []
+                    unit.speed = 0.0
             else:
-                unit.waypoints = _route_to(unit, target.lat, target.lon)
-                unit.speed = unit.max_speed
+                # Not yet in weapon range.
+                # Route to the threat-scored standoff point rather than the target's exact
+                # position.  This ensures the unit stops firing from weapon range — the
+                # waypoint is naturally consumed on arrival so the on-station orbit triggers
+                # cleanly on the following tick without the "stuck en-route" bug.
+                standoff_pt = _standoff_approach_point(
+                    unit, target.lat, target.lon, w_range * STANDOFF_FACTOR, units
+                )
+                unit.waypoints = _route_to(unit, standoff_pt[0], standoff_pt[1], neutral_countries)
+                # Sprint to close on enemy air; cruise on strike ingress to conserve fuel
+                unit.speed = unit.max_speed if target.unit_class == UnitClass.AIR else _transit_speed(unit)
                 m.status = MissionStatus.EN_ROUTE
 
         elif m.type == MissionType.ESCORT:
@@ -450,15 +868,15 @@ def resolve_missions(
                         # Orbit in a tight CAP pattern centred on the escort position
                         if not unit.waypoints:
                             unit.waypoints = _patrol_circuit(ideal_lat, ideal_lon, HOLDING_RADIUS_KM)
-                            unit.speed = unit.max_speed
+                            unit.speed = _transit_speed(unit)
                     else:
-                        # Naval escort: maintain position at low speed matching the charge
+                        # Naval escort: maintain position matching the charge
                         unit.waypoints = [(ideal_lat, ideal_lon)]
-                        unit.speed = min(unit.max_speed, max(charge.speed, unit.max_speed * 0.2))
+                        unit.speed = min(_transit_speed(unit), max(charge.speed, _transit_speed(unit) * 0.3))
                 else:
                     m.status = MissionStatus.EN_ROUTE
-                    unit.waypoints = _route_to(unit, ideal_lat, ideal_lon)
-                    unit.speed = unit.max_speed
+                    unit.waypoints = _route_to(unit, ideal_lat, ideal_lon, neutral_countries)
+                    unit.speed = _transit_speed(unit)
 
         elif m.type == MissionType.RTB:
             lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
@@ -470,19 +888,34 @@ def resolve_missions(
                 m.status = MissionStatus.ON_STATION
                 unit.speed = 0.0
                 unit.waypoints = []
-                unit.rearming = True
-                unit.rearm_ticks_left = rearm_ticks
+                unit.awaiting_loadout = True
+                unit.loadout_selection_ticks_left = LOADOUT_SELECTION_TICKS
                 continue
 
-            # Air and naval: fly/sail to home base
-            if unit.home_base_lat is None or unit.home_base_lon is None:
-                # No home base recorded — clear mission and sit still
-                unit.mission = None
-                unit.speed = 0.0
-                unit.waypoints = []
-                continue
-
-            dist = haversine(unit.lat, unit.lon, unit.home_base_lat, unit.home_base_lon)
+            # Air and naval: route to nearest usable base.
+            # Priority 1 → nearest friendly-controlled base (full rearm + refuel).
+            # Priority 2 → nearest neutral (non-enemy) base (refuel only, no rearm).
+            # Priority 3 → static home_base coords if set (e.g. non-objective strips).
+            # Captured airfields drop off automatically when controlling_side flips.
+            dest_base = _nearest_friendly_base(unit, objectives)
+            if dest_base is not None:
+                unit.refuel_only = False
+                rtb_lat, rtb_lon = dest_base.lat, dest_base.lon
+            else:
+                emerg = _nearest_emergency_base(unit, objectives)
+                if emerg is not None:
+                    unit.refuel_only = True   # neutral: refuel only, no magazine reload
+                    rtb_lat, rtb_lon = emerg.lat, emerg.lon
+                elif unit.home_base_lat is not None and unit.home_base_lon is not None:
+                    unit.refuel_only = False  # assume home base is friendly
+                    rtb_lat, rtb_lon = unit.home_base_lat, unit.home_base_lon
+                else:
+                    # Nowhere to go — hold position
+                    unit.mission = None
+                    unit.speed = 0.0
+                    unit.waypoints = []
+                    continue
+            dist = haversine(unit.lat, unit.lon, rtb_lat, rtb_lon)
             arrive_radius = ON_STATION_RADIUS_KM[unit.unit_class.value] * 2
 
             if dist <= arrive_radius:
@@ -491,11 +924,22 @@ def resolve_missions(
                 unit.waypoints = []
                 if unit.unit_class == UnitClass.AIR:
                     unit.airborne = False  # landed
-                unit.rearming = True
-                unit.rearm_ticks_left = rearm_ticks
+                unit.awaiting_loadout = True
+                unit.loadout_selection_ticks_left = LOADOUT_SELECTION_TICKS
+                # rearm_ticks applied in _burn_resources when the window closes
             else:
-                unit.waypoints = _route_to(unit, unit.home_base_lat, unit.home_base_lon)
-                unit.speed = unit.max_speed
+                unit.waypoints = _route_to(unit, rtb_lat, rtb_lon, neutral_countries)
+                unit.speed = _transit_speed(unit)
                 m.status = MissionStatus.EN_ROUTE
+
+        # Safety net: an airborne air unit must never be stationary.
+        # Any mission path that exits without setting speed gets caught here.
+        if (unit.unit_class == UnitClass.AIR
+                and unit.airborne
+                and unit.fuel_pct > 0.0
+                and unit.speed == 0.0):
+            if not unit.waypoints:
+                unit.waypoints = _patrol_circuit(unit.lat, unit.lon, HOLDING_RADIUS_KM)
+            unit.speed = _transit_speed(unit)
 
     return events

@@ -65,12 +65,16 @@ class Unit(BaseModel):
     home_base_lon: Optional[float] = None
     rearming: bool = False
     rearm_ticks_left: int = 0
+    awaiting_loadout: bool = False          # in loadout-selection window before rearm starts
+    loadout_selection_ticks_left: int = 0  # ticks remaining in that window
     previous_mission: Optional[Mission] = None  # restored after RTB/rearm completes
     data_link: bool = False                      # set from unit_types.json on load
     is_surveillance: bool = False                # AWACS/MPA: flees threats, wide sensor
     sensor_arc_deg: Optional[int] = None        # total sensor arc in degrees (None = default cone/circle)
     sensor_bi_cone: bool = False                # if True: two side-facing arcs with dead zones fore/aft (MESA/side-look)
     weapon_km_override: Optional[float] = None  # set by loadout preset (e.g. ATACMS)
+    pending_loadout: Optional[str] = None       # loadout to apply on next rearm; set by player or commander
+    refuel_only: bool = False                    # True when landed at neutral base: refuel but skip magazine reload
     altitude_m: float = 100.0    # typical operating altitude (m); stamped from library
     rcs: float = 5.0             # radar cross-section (m²); stamped from library
     emcon: bool = True           # True = actively emitting (radar on); False = silent/passive

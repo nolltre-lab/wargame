@@ -6,6 +6,8 @@ from typing import Dict, List, Optional
 from .unit import Unit, Mission, MissionType, MissionStatus, UnitClass
 from .objective import Objective
 from .geo import haversine
+from .combat import UNIT_TYPE_LIB
+from . import ai as _ai_module
 
 REEVAL_INTERVAL = 5  # ticks between commander re-evaluations
 
@@ -53,6 +55,21 @@ class SideGoal:
         }
 
 
+def _set_pending_loadout_for_class(unit: Unit, ammo_class: str) -> None:
+    """
+    Set unit.pending_loadout to the preset that carries the most rounds of
+    ammo_class (e.g. "as" for anti-ship, "aa" for air superiority).
+    Only updates if the unit has multiple presets and a better option exists.
+    Does NOT change the current loadout — takes effect at next rearm.
+    """
+    presets = UNIT_TYPE_LIB.get(unit.unit_type, {}).get("loadout_presets", {})
+    if len(presets) < 2:
+        return
+    best = max(presets, key=lambda k: presets[k].get("magazines", {}).get(ammo_class, 0))
+    if presets[best].get("magazines", {}).get(ammo_class, 0) > 0:
+        unit.pending_loadout = best
+
+
 class Commander:
     def __init__(self, side: str) -> None:
         self.side = side
@@ -98,7 +115,7 @@ class Commander:
 
     def _is_reassignable(self, unit: Unit) -> bool:
         """Commander may redirect this unit (not in critical single-use state)."""
-        if unit.destroyed or unit.rearming or unit.side.value != self.side:
+        if unit.destroyed or unit.rearming or unit.awaiting_loadout or unit.side.value != self.side:
             return False
         if unit.mission is not None and unit.mission.type == MissionType.RTB:
             return False
@@ -125,6 +142,7 @@ class Commander:
 
         elif t == "intercept":
             if uc == UnitClass.AIR:
+                # Loadout determines which target class is hunted — no loadout override here.
                 return Mission(type=MissionType.INTERCEPT, status=MissionStatus.EN_ROUTE)
 
         elif t == "patrol":
@@ -139,6 +157,8 @@ class Commander:
 
         elif t == "strike":
             if uc == UnitClass.AIR:
+                # Strike is an intercept mission; loadout drives whether the unit hunts
+                # ships, ground targets, or air — commander does not override loadout choice.
                 return Mission(type=MissionType.INTERCEPT, status=MissionStatus.EN_ROUTE)
             if uc == UnitClass.NAVAL:
                 return Mission(type=MissionType.PATROL, objective_id=goal.objective_id, status=MissionStatus.EN_ROUTE)
@@ -197,6 +217,16 @@ class Commander:
                 candidates = sorted([u for u in available if u.unit_class == uc], key=dist_to_ref)
                 if uc == UnitClass.AIR:
                     candidates = [u for u in candidates if u.airborne]
+                # Skip units that don't have enough fuel to reach the goal and RTB.
+                # RTB-capable aircraft need sufficient margin; others (ground, naval)
+                # don't burn fuel quickly enough to worry at this granularity.
+                if ref_lat is not None and uc == UnitClass.AIR:
+                    candidates = [
+                        u for u in candidates
+                        if u.fuel_pct >= _ai_module.fuel_roundtrip_pct(
+                            u, ref_lat, ref_lon, objectives
+                        )
+                    ]
                 for unit in candidates[:gap]:
                     new_m = self._make_mission(unit, goal, objectives)
                     if new_m is None:
@@ -220,4 +250,39 @@ class Commander:
             assign_class(UnitClass.AIR, air_gap)
             assign_class(UnitClass.NAVAL, naval_gap)
 
+        # Suggest loadout for units in the selection window.
+        # Commander picks based on highest-priority goal gap; player override (pending_loadout
+        # already set) takes precedence — we only fill in when no selection has been made yet.
+        waiting = [u for u in friendly if u.awaiting_loadout and not u.pending_loadout]
+        if waiting:
+            ammo = self._ammo_class_for_top_goal_gap(units)
+            if ammo:
+                for wu in waiting:
+                    _set_pending_loadout_for_class(wu, ammo)
+
         return events
+
+    # ── Loadout suggestion ────────────────────────────────────────────────────
+
+    def _ammo_class_for_top_goal_gap(self, units: Dict[str, Unit]) -> Optional[str]:
+        """
+        Return the ammo class most needed by the highest-priority unfilled air goal.
+        Excludes units currently in the selection window from 'already serving' counts
+        so their pending slot is counted as a genuine gap.
+        """
+        _GOAL_AMMO: Dict[str, str] = {"strike": "as", "intercept": "aa", "capture": "ag"}
+        active_friendly = [
+            u for u in units.values()
+            if u.side.value == self.side and not u.destroyed
+            and not u.awaiting_loadout and not u.rearming
+        ]
+        for goal in sorted(self.goals, key=lambda g: g.priority):
+            serving_air = sum(
+                1 for u in active_friendly
+                if u.unit_class == UnitClass.AIR and self._serves_goal(u, goal)
+            )
+            if serving_air < goal.effective_air():
+                ammo = _GOAL_AMMO.get(goal.type)
+                if ammo:
+                    return ammo
+        return None

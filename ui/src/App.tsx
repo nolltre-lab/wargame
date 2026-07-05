@@ -16,7 +16,7 @@ export default function App() {
   const running = useSimStore((s) => s.running);
   const perspective = useSimStore((s) => s.perspective);
   const setPerspective = useSimStore((s) => s.setPerspective);
-  const [rings, setRings] = useState<RingToggles>({ sensor: false, airWeapon: false, surfaceWeapon: false });
+  const [rings, setRings] = useState<RingToggles>({ sensor: false, airWeapon: false, surfaceWeapon: false, territory: false });
   const [mode, setMode] = useState<'sim' | 'builder'>('sim');
   const [showGoals, setShowGoals] = useState(false);
 
@@ -65,9 +65,10 @@ export default function App() {
 
         <span style={{ letterSpacing: 1 }}>RANGES</span>
         {([
-          { key: 'sensor'        as const, label: 'SENSOR',  color: '#4488ff' },
-          { key: 'airWeapon'     as const, label: 'A-A/S-A', color: '#ff8800' },
-          { key: 'surfaceWeapon' as const, label: 'A-S/S-S', color: '#ff3300' },
+          { key: 'sensor'        as const, label: 'SENSOR',    color: '#4488ff' },
+          { key: 'airWeapon'     as const, label: 'A-A/S-A',   color: '#ff8800' },
+          { key: 'surfaceWeapon' as const, label: 'A-S/S-S',   color: '#ff3300' },
+          { key: 'territory'     as const, label: 'TERRITORY', color: '#44cc88' },
         ]).map(({ key, label, color }) => (
           <button key={key} onClick={() => setRings(r => ({ ...r, [key]: !r[key] }))} style={{
             background: rings[key] ? `${color}22` : 'transparent',

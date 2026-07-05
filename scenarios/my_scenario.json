@@ -14,5 +14,18 @@
       "lat": 59.50692864422197,
       "lon": 21.660522460934857
     }
-  ]
+  ],
+  "coalitions": {
+    "blue": [
+      "estonia",
+      "latvia",
+      "lithuania",
+      "poland",
+      "finland",
+      "sweden"
+    ],
+    "red": [
+      "russia"
+    ]
+  }
 }

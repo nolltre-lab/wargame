@@ -1,0 +1,477 @@
+{
+  "name": "baltic_sea_scenario_3",
+  "start_time": "2024-06-15T04:00:00Z",
+  "tick_duration_seconds": 60,
+  "coalitions": {
+    "blue": [
+      "latvia",
+      "lithuania",
+      "poland",
+      "finland",
+      "sweden",
+      "estonia"
+    ],
+    "red": [
+      "russia"
+    ]
+  },
+  "objectives": [
+    {
+      "id": "amari_ab",
+      "name": "\u00c4mari Air Base",
+      "lat": 59.2622,
+      "lon": 24.2075,
+      "type": "airfield",
+      "controlling_side": "blue",
+      "country": "estonia"
+    },
+    {
+      "id": "tallinn",
+      "name": "Tallinn",
+      "lat": 59.4369,
+      "lon": 24.7536,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "estonia"
+    },
+    {
+      "id": "tallinn_port",
+      "name": "Tallinn Port",
+      "lat": 59.4444,
+      "lon": 24.7519,
+      "type": "port",
+      "controlling_side": "blue",
+      "country": "estonia"
+    },
+    {
+      "id": "narva",
+      "name": "Narva",
+      "lat": 59.3769,
+      "lon": 28.1795,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "estonia"
+    },
+    {
+      "id": "riga",
+      "name": "Riga",
+      "lat": 56.946,
+      "lon": 24.1059,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "latvia"
+    },
+    {
+      "id": "riga_airport",
+      "name": "Riga International Airport",
+      "lat": 56.9236,
+      "lon": 23.9711,
+      "type": "airfield",
+      "controlling_side": "blue",
+      "country": "latvia"
+    },
+    {
+      "id": "liepaja_port",
+      "name": "Liep\u0101ja Naval Port",
+      "lat": 56.5104,
+      "lon": 21.0129,
+      "type": "port",
+      "controlling_side": "blue",
+      "country": "latvia"
+    },
+    {
+      "id": "ventspils",
+      "name": "Ventspils Port",
+      "lat": 57.3902,
+      "lon": 21.564,
+      "type": "port",
+      "controlling_side": "blue",
+      "country": "latvia"
+    },
+    {
+      "id": "siauliai_ab",
+      "name": "\u0160iauliai Air Base",
+      "lat": 55.8939,
+      "lon": 23.3953,
+      "type": "airfield",
+      "controlling_side": "blue",
+      "country": "lithuania"
+    },
+    {
+      "id": "vilnius",
+      "name": "Vilnius",
+      "lat": 54.6872,
+      "lon": 25.2797,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "lithuania"
+    },
+    {
+      "id": "kaunas",
+      "name": "Kaunas",
+      "lat": 54.8985,
+      "lon": 23.8832,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "lithuania"
+    },
+    {
+      "id": "klaipeda",
+      "name": "Klaip\u0117da Port",
+      "lat": 55.7033,
+      "lon": 21.1442,
+      "type": "port",
+      "controlling_side": "blue",
+      "country": "lithuania"
+    },
+    {
+      "id": "malbork_ab",
+      "name": "Malbork Air Base",
+      "lat": 54.0256,
+      "lon": 19.1347,
+      "type": "airfield",
+      "controlling_side": "blue",
+      "country": "poland"
+    },
+    {
+      "id": "gdansk",
+      "name": "Gda\u0144sk",
+      "lat": 54.352,
+      "lon": 18.6466,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "poland"
+    },
+    {
+      "id": "gdynia_naval",
+      "name": "Gdynia Naval Base",
+      "lat": 54.5262,
+      "lon": 18.5528,
+      "type": "base",
+      "controlling_side": "blue",
+      "country": "poland"
+    },
+    {
+      "id": "helsinki",
+      "name": "Helsinki",
+      "lat": 60.1699,
+      "lon": 24.9384,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "finland"
+    },
+    {
+      "id": "helsinki_airport",
+      "name": "Helsinki-Vantaa Airport",
+      "lat": 60.3172,
+      "lon": 24.9633,
+      "type": "airfield",
+      "controlling_side": "blue",
+      "country": "finland"
+    },
+    {
+      "id": "turku",
+      "name": "Turku",
+      "lat": 60.4518,
+      "lon": 22.2666,
+      "type": "port",
+      "controlling_side": "blue",
+      "country": "finland"
+    },
+    {
+      "id": "stockholm",
+      "name": "Stockholm",
+      "lat": 59.3293,
+      "lon": 18.0686,
+      "type": "city",
+      "controlling_side": "blue",
+      "country": "sweden"
+    },
+    {
+      "id": "gotland",
+      "name": "Gotland (Visby)",
+      "lat": 57.6389,
+      "lon": 18.2947,
+      "type": "base",
+      "controlling_side": "blue",
+      "country": "sweden"
+    },
+    {
+      "id": "karlskrona",
+      "name": "Karlskrona Naval Base",
+      "lat": 56.1612,
+      "lon": 15.5869,
+      "type": "base",
+      "controlling_side": "blue",
+      "country": "sweden"
+    },
+    {
+      "id": "kaliningrad",
+      "name": "Kaliningrad",
+      "lat": 54.7104,
+      "lon": 20.51,
+      "type": "city",
+      "controlling_side": "red",
+      "country": "russia"
+    },
+    {
+      "id": "baltiysk",
+      "name": "Baltiysk Naval Base",
+      "lat": 54.6521,
+      "lon": 19.9,
+      "type": "base",
+      "controlling_side": "red",
+      "country": "russia"
+    },
+    {
+      "id": "st_petersburg",
+      "name": "St. Petersburg",
+      "lat": 59.9343,
+      "lon": 30.3351,
+      "type": "city",
+      "controlling_side": "red",
+      "country": "russia"
+    },
+    {
+      "id": "kronstadt",
+      "name": "Kronstadt Naval Base",
+      "lat": 59.9948,
+      "lon": 29.757,
+      "type": "base",
+      "controlling_side": "red",
+      "country": "russia"
+    },
+    {
+      "id": "gulf_of_finland",
+      "name": "Gulf of Finland",
+      "lat": 60,
+      "lon": 26,
+      "type": "maritime",
+      "controlling_side": null,
+      "country": null
+    },
+    {
+      "id": "baltic_central",
+      "name": "Baltic Sea Central",
+      "lat": 57.5,
+      "lon": 19,
+      "type": "maritime",
+      "controlling_side": null,
+      "country": null
+    },
+    {
+      "id": "kaliningrad_sea",
+      "name": "Kaliningrad Sea Approach",
+      "lat": 55,
+      "lon": 20,
+      "type": "maritime",
+      "controlling_side": null,
+      "country": null
+    },
+    {
+      "id": "danish_straits",
+      "name": "Danish Straits",
+      "lat": 55.8,
+      "lon": 12.5,
+      "type": "maritime",
+      "controlling_side": null,
+      "country": null
+    }
+  ],
+  "units": [
+    {
+      "id": "red_su30sm_1783107767657",
+      "name": "Su-30SM Flanker-H (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "su30sm",
+      "sidc": "SHAPMFF----E---",
+      "lat": 59.93897188762003,
+      "lon": 25.78039550781068,
+      "airborne": true,
+      "loadout": "aa_focus",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "area_patrol",
+        "objective_id": null,
+        "patrol_lat": 59.66947418651512,
+        "patrol_lon": 23.66020810247818,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "red_slava_cg_1783174924573",
+      "name": "Slava-class Cruiser (CG) (Red) #1",
+      "side": "red",
+      "unit_class": "naval",
+      "unit_type": "slava_cg",
+      "sidc": "SHSPCLCC---E---",
+      "lat": 59.96097776292754,
+      "lon": 26.428588867185482,
+      "airborne": true,
+      "loadout": "anti_ship",
+      "home_base_lat": 59.4444,
+      "home_base_lon": 24.7519
+    },
+    {
+      "id": "blue_patriot_pac3_1783181321279",
+      "name": "Patriot PAC-3 (battery) (Blue) #1",
+      "side": "blue",
+      "unit_class": "ground",
+      "unit_type": "patriot_pac3",
+      "sidc": "SFGPAMAD---E---",
+      "lat": 57.46610130049845,
+      "lon": 18.46376542227634,
+      "airborne": true,
+      "loadout": "aaw",
+      "home_base_lat": 57.46549067943394,
+      "home_base_lon": 18.491712081436702
+    },
+    {
+      "id": "blue_patriot_pac3_1783181365810",
+      "name": "Patriot PAC-3 (battery) (Blue) #2",
+      "side": "blue",
+      "unit_class": "ground",
+      "unit_type": "patriot_pac3",
+      "sidc": "SFGPAMAD---E---",
+      "lat": 59.735431194857966,
+      "lon": 18.616840912321152,
+      "airborne": true,
+      "loadout": "aaw",
+      "home_base_lat": 59.735431194857966,
+      "home_base_lon": 18.616840912321152
+    },
+    {
+      "id": "blue_f35a_1783181412118",
+      "name": "F-35A Lightning II (Blue) #1",
+      "side": "blue",
+      "unit_class": "air",
+      "unit_type": "f35a",
+      "sidc": "SFAPMFF----E---",
+      "lat": 59.41202321191258,
+      "lon": 21.61657714843554,
+      "airborne": true,
+      "loadout": "anti_ship",
+      "home_base_lat": 57.6389,
+      "home_base_lon": 18.2947,
+      "mission": {
+        "type": "intercept",
+        "objective_id": null,
+        "patrol_lat": 59.31180308006779,
+        "patrol_lon": 19.95014262096265,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "blue_patriot_pac3_1783181541158",
+      "name": "Patriot PAC-3 (battery) (Blue) #3",
+      "side": "blue",
+      "unit_class": "ground",
+      "unit_type": "patriot_pac3",
+      "sidc": "SFGPAMAD---E---",
+      "lat": 56.91194440191387,
+      "lon": 16.806086571798147,
+      "airborne": true,
+      "loadout": "aaw",
+      "home_base_lat": 56.91194440191387,
+      "home_base_lon": 16.806086571798147
+    },
+    {
+      "id": "blue_patriot_pac3_1783181544908",
+      "name": "Patriot PAC-3 (battery) (Blue) #4",
+      "side": "blue",
+      "unit_class": "ground",
+      "unit_type": "patriot_pac3",
+      "sidc": "SFGPAMAD---E---",
+      "lat": 56.27014129299323,
+      "lon": 15.586962797634726,
+      "airborne": true,
+      "loadout": "aaw",
+      "home_base_lat": 56.27014129299323,
+      "home_base_lon": 15.586962797634726
+    },
+    {
+      "id": "red_iskander_m_1783193417092",
+      "name": "9K720 Iskander-M (brigade) (Red) #1",
+      "side": "red",
+      "unit_class": "ground",
+      "unit_type": "iskander_m",
+      "sidc": "SHGPUCRH---E---",
+      "lat": 59.490199984062684,
+      "lon": 28.16442871093517,
+      "airborne": true,
+      "loadout": "strike",
+      "home_base_lat": 59.490199984062684,
+      "home_base_lon": 28.16442871093517,
+      "mission": {
+        "type": "intercept",
+        "objective_id": null,
+        "patrol_lat": 59.490199984062684,
+        "patrol_lon": 28.16442871093517,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "blue_patriot_pac3_1783193447296",
+      "name": "Patriot PAC-3 (battery) (Blue) #5",
+      "side": "blue",
+      "unit_class": "ground",
+      "unit_type": "patriot_pac3",
+      "sidc": "SFGPAMAD---E---",
+      "lat": 59.36986423594951,
+      "lon": 26.305550728198597,
+      "airborne": true,
+      "loadout": "aaw",
+      "home_base_lat": 59.36986423594951,
+      "home_base_lon": 26.305550728198597,
+      "mission": {
+        "type": "escort",
+        "objective_id": null,
+        "patrol_lat": 59.36986423594951,
+        "patrol_lon": 26.305550728198597,
+        "target_unit_id": "blue_himars_1783193460635",
+        "status": "en_route"
+      }
+    },
+    {
+      "id": "blue_himars_1783193460635",
+      "name": "M142 HIMARS (battalion) (Blue) #1",
+      "side": "blue",
+      "unit_class": "ground",
+      "unit_type": "himars",
+      "sidc": "SFGPUCRH---E---",
+      "lat": 59.28446224832513,
+      "lon": 26.31459994961591,
+      "airborne": true,
+      "loadout": "atacms",
+      "home_base_lat": 59.28446224832513,
+      "home_base_lon": 26.31459994961591
+    },
+    {
+      "id": "red_a50u_1783193570397",
+      "name": "A-50U Mainstay AEW&C (Red) #1",
+      "side": "red",
+      "unit_class": "air",
+      "unit_type": "a50u",
+      "sidc": "SHGPUCI----E---",
+      "lat": 59.63259327944729,
+      "lon": 31.393808385111328,
+      "airborne": true,
+      "loadout": "standard",
+      "home_base_lat": 59.9948,
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "area_patrol",
+        "objective_id": null,
+        "patrol_lat": 59.71175824108238,
+        "patrol_lon": 32.14997308798445,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
+    }
+  ]
+}

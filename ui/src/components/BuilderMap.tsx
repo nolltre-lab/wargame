@@ -5,12 +5,70 @@ import { emptyFC, circlePolygon, conePolygon, type RingFeature } from '../lib/ge
 import { loadSidcImage } from '../lib/milsymbol';
 import type { BuilderUnit, Objective, RingToggles, UnitTypeInfo } from '../types';
 
+// ── Shared objective popup helpers ────────────────────────────────────────────
+
+const SIDE_COLOR_MAP: Record<string, string> = { blue: '#4488ff', red: '#ff4444' };
+
+function ensureObjPopupStyle() {
+  if (document.getElementById('obj-popup-style')) return;
+  const s = document.createElement('style');
+  s.id = 'obj-popup-style';
+  s.textContent = `
+    .obj-popup.maplibregl-popup { z-index: 999; }
+    .obj-popup .maplibregl-popup-content {
+      background: #070e1a !important; border: 1px solid #1e3a5a !important;
+      border-radius: 0 !important; padding: 8px 12px 10px !important;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.75) !important; min-width: 140px;
+    }
+    .obj-popup .maplibregl-popup-tip { display: none !important; }
+    .obj-popup .maplibregl-popup-close-button {
+      color: #4a6a8a !important; font-size: 15px !important;
+      top: 2px !important; right: 6px !important; line-height: 1 !important;
+    }
+    .obj-popup .maplibregl-popup-close-button:hover { color: #8aa8c8 !important; }
+  `;
+  document.head.appendChild(s);
+}
+
+function objPopupHTML(obj: Objective): string {
+  const icon = OBJ_ICON[obj.type] ?? '◇';
+  const sideCol = obj.controlling_side ? (SIDE_COLOR_MAP[obj.controlling_side] ?? '#5a7a9a') : '#5a7a9a';
+  const sideLabel = obj.controlling_side ? obj.controlling_side.toUpperCase() : 'NEUTRAL';
+  return `<div style="font-family:'Courier New',monospace;font-size:11px;color:#8aa8c8;line-height:1.8;">` +
+    `<div style="font-size:12px;color:#aaccee;letter-spacing:1px;margin-bottom:3px;padding-right:14px;">${obj.name}</div>` +
+    `<div style="color:#6688aa;">${icon}  ${obj.type.toUpperCase()}</div>` +
+    `<div style="color:${sideCol};">${sideLabel}</div>` +
+    (obj.country ? `<div style="color:#4a6a8a;font-size:10px;letter-spacing:1px;">${obj.country.toUpperCase()}</div>` : '') +
+    `</div>`;
+}
+
+const API = 'http://localhost:8000';
 const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 const INITIAL_CENTER: [number, number] = [26.5, 58.8];
 const INITIAL_ZOOM = 6;
 
 type MapData = Parameters<maplibregl.GeoJSONSource['setData']>[0];
 const md = (o: unknown) => o as MapData;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GeoJsonFC = { type: 'FeatureCollection'; features: any[] };
+
+function buildTerritoryFC(raw: GeoJsonFC | null, objectives: Objective[], show: boolean): MapData {
+  if (!raw || !show) return md(emptyFC());
+  const countryToSide: Record<string, string> = {};
+  for (const obj of objectives) {
+    if (obj.country && obj.controlling_side && !countryToSide[obj.country.toLowerCase()]) {
+      countryToSide[obj.country.toLowerCase()] = obj.controlling_side;
+    }
+  }
+  return md({
+    type: 'FeatureCollection',
+    features: raw.features.map(f => ({
+      ...f,
+      properties: { ...f.properties, side: countryToSide[f.properties.name ?? ''] ?? 'neutral' },
+    })),
+  });
+}
 
 // ── Ring helpers (BuilderUnit has no sensor_km — read from unitTypes) ─────────
 
@@ -117,7 +175,20 @@ export function BuilderMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef<Set<string>>(new Set());
   const objMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const objPopupRef = useRef<maplibregl.Popup | null>(null);
+  const objectivesRef = useRef<Objective[]>([]);
   const [mapReady, setMapReady] = useState(false);
+  const [territoriesRaw, setTerritoriesRaw] = useState<GeoJsonFC | null>(null);
+
+  // Keep objectives ref current so popup click handler always reads fresh data
+  objectivesRef.current = objectives;
+
+  useEffect(() => {
+    fetch(`${API}/territories`)
+      .then(r => r.json())
+      .then(setTerritoriesRaw)
+      .catch(() => {/* optional overlay — ignore errors */});
+  }, []);
 
   // Stale-closure refs — updated on every render
   const onMapClickRef = useRef(onMapClick);
@@ -153,6 +224,21 @@ export function BuilderMap({
       const src = (id: string) =>
         map.addSource(id, { type: 'geojson', data: md(emptyFC()) });
       const lay = (spec: maplibregl.LayerSpecification) => map.addLayer(spec);
+
+      // Territory boundaries (12nm sea/airspace)
+      src('territory');
+      lay({ id: 'territory-fill', type: 'fill', source: 'territory',
+        paint: {
+          'fill-color': ['match', ['get', 'side'],
+            'blue', '#4488ff', 'red', '#ff4444', '#aaaaaa'],
+          'fill-opacity': 0.07,
+        } });
+      lay({ id: 'territory-line', type: 'line', source: 'territory',
+        paint: {
+          'line-color': ['match', ['get', 'side'],
+            'blue', '#4488ff', 'red', '#ff4444', '#888888'],
+          'line-width': 1.2, 'line-opacity': 0.55, 'line-dasharray': [5, 4],
+        } });
 
       // Sensor rings
       src('sensor-rings');
@@ -254,6 +340,9 @@ export function BuilderMap({
       });
       map.on('click', (e) => {
         if (clickedUnitRef.current) { clickedUnitRef.current = false; return; }
+        // Close objective popup on bare map click
+        objPopupRef.current?.remove();
+        objPopupRef.current = null;
         onMapClickRef.current(e.lngLat.lat, e.lngLat.lng);
       });
 
@@ -342,7 +431,7 @@ export function BuilderMap({
     }));
   }, [mapReady, units, selectedUnitId]);
 
-  // ── Range rings ───────────────────────────────────────────────────────────
+  // ── Range rings + territory ───────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -351,9 +440,10 @@ export function BuilderMap({
     sd('sensor-rings', builderSensorRings(units, unitTypes, rings.sensor, selectedUnitId));
     sd('air-rings',    builderWeaponRings(units, unitTypes, 'air',     rings.airWeapon,     selectedUnitId));
     sd('srf-rings',    builderWeaponRings(units, unitTypes, 'surface', rings.surfaceWeapon, selectedUnitId));
-  }, [mapReady, units, unitTypes, rings, selectedUnitId]);
+    sd('territory',    buildTerritoryFC(territoriesRaw, objectives, rings.territory));
+  }, [mapReady, units, unitTypes, rings, selectedUnitId, territoriesRaw, objectives]);
 
-  // ── Objective markers (read-only) ─────────────────────────────────────────
+  // ── Objective markers ─────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -362,13 +452,35 @@ export function BuilderMap({
       if (!seen.has(id)) { m.remove(); objMarkersRef.current.delete(id); }
     });
     objectives.forEach(obj => {
-      if (objMarkersRef.current.has(obj.id)) return;
+      const existing = objMarkersRef.current.get(obj.id);
+      if (existing) {
+        // Update color when controlling_side changes
+        existing.getElement().style.color =
+          obj.controlling_side ? (SIDE_COLOR_MAP[obj.controlling_side] ?? '#999') : '#999';
+        return;
+      }
       const el = document.createElement('div');
       el.style.cssText =
-        'width:22px;height:22px;display:flex;align-items:center;justify-content:center;' +
-        'font-size:14px;color:#999;text-shadow:0 0 5px #000;pointer-events:none;';
+        'width:26px;height:26px;display:flex;align-items:center;justify-content:center;' +
+        `font-size:15px;color:${obj.controlling_side ? (SIDE_COLOR_MAP[obj.controlling_side] ?? '#999') : '#999'};` +
+        'text-shadow:0 0 6px #000;cursor:pointer;user-select:none;';
       el.textContent = OBJ_ICON[obj.type] ?? '◇';
       el.title = obj.name;
+      el.addEventListener('mouseenter', () => { el.style.filter = 'brightness(1.4)'; });
+      el.addEventListener('mouseleave', () => { el.style.filter = ''; });
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isPlacingRef.current) return;
+        objPopupRef.current?.remove();
+        const current = objectivesRef.current.find(o => o.id === obj.id) ?? obj;
+        ensureObjPopupStyle();
+        objPopupRef.current = new maplibregl.Popup({
+          closeButton: true, className: 'obj-popup', offset: 14, maxWidth: '240px',
+        })
+          .setLngLat([obj.lon, obj.lat])
+          .setHTML(objPopupHTML(current))
+          .addTo(map);
+      });
       const m = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([obj.lon, obj.lat])
         .addTo(map);

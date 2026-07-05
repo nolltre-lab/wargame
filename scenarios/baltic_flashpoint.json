@@ -4,24 +4,53 @@
   "tick_duration_seconds": 60,
   "goals": {
     "blue": [
-      {"type": "hold",      "objective_id": "amari_ab",     "priority": 1},
-      {"type": "hold",      "objective_id": "tallinn_port",  "priority": 2},
-      {"type": "intercept", "priority": 3, "air_count": 1}
+      {
+        "type": "hold",
+        "objective_id": "amari_ab",
+        "priority": 1
+      },
+      {
+        "type": "hold",
+        "objective_id": "tallinn_port",
+        "priority": 2
+      },
+      {
+        "type": "intercept",
+        "priority": 3,
+        "air_count": 1
+      }
     ],
     "red": [
-      {"type": "capture", "objective_id": "amari_ab", "priority": 1, "ground_count": 1, "air_count": 1},
-      {"type": "capture", "objective_id": "narva",    "priority": 2, "ground_count": 1, "air_count": 0},
-      {"type": "intercept", "priority": 3, "air_count": 1}
+      {
+        "type": "capture",
+        "objective_id": "amari_ab",
+        "priority": 1,
+        "ground_count": 1,
+        "air_count": 1
+      },
+      {
+        "type": "capture",
+        "objective_id": "narva",
+        "priority": 2,
+        "ground_count": 1,
+        "air_count": 0
+      },
+      {
+        "type": "intercept",
+        "priority": 3,
+        "air_count": 1
+      }
     ]
   },
   "objectives": [
     {
       "id": "amari_ab",
-      "name": "\u00c4mari Air Base",
+      "name": "Ämari Air Base",
       "lat": 59.2622,
       "lon": 24.2075,
       "type": "airfield",
-      "controlling_side": "blue"
+      "controlling_side": "blue",
+      "country": "estonia"
     },
     {
       "id": "tallinn_port",
@@ -29,7 +58,8 @@
       "lat": 59.443,
       "lon": 24.749,
       "type": "port",
-      "controlling_side": "blue"
+      "controlling_side": "blue",
+      "country": "estonia"
     },
     {
       "id": "narva",
@@ -37,7 +67,8 @@
       "lat": 59.3769,
       "lon": 28.1789,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "estonia"
     },
     {
       "id": "tartu",
@@ -45,7 +76,8 @@
       "lat": 58.378,
       "lon": 26.729,
       "type": "city",
-      "controlling_side": "blue"
+      "controlling_side": "blue",
+      "country": "estonia"
     },
     {
       "id": "paldiski",
@@ -53,7 +85,8 @@
       "lat": 59.349,
       "lon": 24.047,
       "type": "base",
-      "controlling_side": "blue"
+      "controlling_side": "blue",
+      "country": "estonia"
     },
     {
       "id": "pskov_ab",
@@ -61,7 +94,8 @@
       "lat": 57.7839,
       "lon": 28.3956,
       "type": "airfield",
-      "controlling_side": "red"
+      "controlling_side": "red",
+      "country": "russia"
     },
     {
       "id": "kingisepp",
@@ -69,23 +103,26 @@
       "lat": 59.3724,
       "lon": 28.6142,
       "type": "city",
-      "controlling_side": "red"
+      "controlling_side": "red",
+      "country": "russia"
     },
     {
       "id": "gulf_choke",
-      "name": "Gulf of Finland \u2014 Western Approach",
+      "name": "Gulf of Finland — Western Approach",
       "lat": 59.6,
       "lon": 24.5,
       "type": "maritime",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": null
     },
     {
       "id": "gulf_east",
-      "name": "Gulf of Finland \u2014 Eastern Approach",
+      "name": "Gulf of Finland — Eastern Approach",
       "lat": 59.75,
       "lon": 27.5,
       "type": "maritime",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": null
     }
   ],
   "units": [
@@ -229,5 +266,18 @@
       "home_base_lat": 59.376,
       "home_base_lon": 28.2115
     }
-  ]
+  ],
+  "coalitions": {
+    "blue": [
+      "estonia",
+      "latvia",
+      "lithuania",
+      "poland",
+      "finland",
+      "sweden"
+    ],
+    "red": [
+      "russia"
+    ]
+  }
 }

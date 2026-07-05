@@ -1,13 +1,19 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import json
+import random
 from pathlib import Path
 
 from .unit import Unit, Mission, MissionType, MissionStatus
+from .missile import Missile
 from .objective import Objective
 from .geo import haversine, bearing, destination
 from .ai import resolve_missions
-from .combat import resolve_combat, build_detection_picture, default_hp, sensor_range, weapon_range, valid_targets as unit_vtargets, UNIT_TYPE_LIB
+from .combat import (
+    resolve_combat, build_detection_picture, default_hp, sensor_range,
+    weapon_range, valid_targets as unit_vtargets, UNIT_TYPE_LIB,
+    missile_detection_range,
+)
 from .commander import Commander
 
 
@@ -15,6 +21,7 @@ class SimulationEngine:
     def __init__(self) -> None:
         self.units: Dict[str, Unit] = {}
         self.objectives: Dict[str, Objective] = {}
+        self.missiles: Dict[str, Missile] = {}
         self.sim_time: datetime = datetime.utcnow()
         self.tick_duration: float = 60.0
         self.speed_multiplier: float = 1.0
@@ -23,10 +30,13 @@ class SimulationEngine:
         self._recent_events: List[dict] = []
         self._detection_picture: Dict[str, set] = {"blue": set(), "red": set()}
         self._gci_picture: Dict[str, set] = {"blue": set(), "red": set()}
+        self._missile_detection: Dict[str, set] = {"blue": set(), "red": set()}
         self.commanders: Dict[str, Commander] = {
             "blue": Commander("blue"),
             "red":  Commander("red"),
         }
+        # Countries not in any coalition — air units must route around their airspace
+        self.neutral_countries: set = set()
 
     def load_scenario(self, path: str) -> None:
         data = json.loads(Path(path).read_text())
@@ -84,11 +94,30 @@ class SimulationEngine:
             units[unit.id] = unit
         self.units = units
 
+        # Apply coalition assignments: objectives whose controlling_side is still
+        # null get a side from the scenario's coalitions map (country → side).
+        # Explicit controlling_side values in the JSON are never overridden.
+        coalitions = data.get("coalitions", {})
+        country_to_side: dict = {}
+        for side, countries in coalitions.items():
+            for c in countries:
+                country_to_side[c.lower()] = side
+        for obj in self.objectives.values():
+            if obj.controlling_side is None and obj.country:
+                obj.controlling_side = country_to_side.get(obj.country.lower())
+
+        # Neutral countries = have objectives with a country tag but are in no coalition
+        all_obj_countries = {
+            obj.country.lower() for obj in self.objectives.values() if obj.country
+        }
+        self.neutral_countries = all_obj_countries - set(country_to_side.keys())
+
         # Load side goals and initialise commanders
         goals_data = data.get("goals", {})
         for side in ("blue", "red"):
             self.commanders[side].set_goals(goals_data.get(side, []))
 
+        self.missiles = {}
         self._recent_events = []
         self.tick_count = 0
         self.running = False
@@ -100,14 +129,28 @@ class SimulationEngine:
 
     def tick(self) -> None:
         self._detection_picture = build_detection_picture(self.units)
-        events, under_fire = resolve_combat(self.units)
+
+        events, ground_under_fire, new_missiles = resolve_combat(self.units)
         resource_events = self._burn_resources()
         for e in events + resource_events:
             if e["type"] in ("destroyed", "out_of_ammo", "low_fuel", "rtb_complete"):
                 e["tick"] = self.tick_count
         self._recent_events = events + resource_events
 
-        mission_events = resolve_missions(self.units, self.objectives, under_fire, self.tick_count)
+        # Register new missiles
+        for m in new_missiles:
+            self.missiles[m.id] = m
+
+        # Augment under_fire with units targeted by any in-flight missile
+        under_fire = dict(ground_under_fire)
+        for m in self.missiles.values():
+            if not m.intercepted:
+                under_fire.setdefault(m.target_id, []).append(m.firer_id)
+
+        mission_events = resolve_missions(
+            self.units, self.objectives, under_fire, self.tick_count,
+            self.neutral_countries,
+        )
         for e in mission_events:
             e["tick"] = self.tick_count
         self._recent_events.extend(mission_events)
@@ -126,6 +169,17 @@ class SimulationEngine:
             if not unit.destroyed and unit.waypoints and unit.speed > 0:
                 self._advance_unit(unit)
 
+        # Process in-flight missiles (advance → intercept check → impact)
+        self._advance_missiles()
+        intercept_events = self._process_missile_intercepts()
+        impact_events = self._apply_missile_impacts()
+        for e in intercept_events + impact_events:
+            e["tick"] = self.tick_count
+        self._recent_events.extend(intercept_events + impact_events)
+
+        # Update missile visibility picture for FOW
+        self._missile_detection = self._build_missile_detection()
+
         self.sim_time += timedelta(seconds=self.tick_duration)
         self.tick_count += 1
 
@@ -134,6 +188,17 @@ class SimulationEngine:
         for unit in self.units.values():
             if unit.destroyed:
                 continue
+
+            if unit.awaiting_loadout:
+                unit.loadout_selection_ticks_left = max(0, unit.loadout_selection_ticks_left - 1)
+                if unit.loadout_selection_ticks_left == 0:
+                    unit.awaiting_loadout = False
+                    lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+                    unit.rearm_ticks_left = lib.get(
+                        "rearm_ticks", self._REARM_TICKS.get(unit.unit_class.value, 8)
+                    )
+                    unit.rearming = True
+                continue  # no fuel burn during selection window
 
             if unit.rearming:
                 unit.rearm_ticks_left = max(0, unit.rearm_ticks_left - 1)
@@ -145,8 +210,19 @@ class SimulationEngine:
             lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
             was_above_20 = unit.fuel_pct > 20.0
             if unit.speed > 0:
-                burn = lib.get("fuel_burn_per_tick",
-                               self._FUEL_MOVING.get(unit.unit_class.value, 0.5))
+                base_burn = lib.get("fuel_burn_per_tick",
+                                    self._FUEL_MOVING.get(unit.unit_class.value, 0.5))
+                # Apply cruise factor when not at max speed (transit, patrol, RTB).
+                # Threshold: 95% of max so rounding/float drift doesn't suppress it.
+                if unit.max_speed > 0 and unit.speed < unit.max_speed * 0.95:
+                    cruise_factor = lib.get(
+                        "cruise_fuel_factor",
+                        0.35 if unit.unit_class.value == "air" else
+                        0.40 if unit.unit_class.value == "naval" else 1.0
+                    )
+                    burn = base_burn * cruise_factor
+                else:
+                    burn = base_burn
             else:
                 burn = lib.get("fuel_idle_per_tick",
                                self._FUEL_IDLE.get(unit.unit_class.value, 0.1))
@@ -165,11 +241,26 @@ class SimulationEngine:
     def _complete_rearm(self, unit: Unit) -> dict:
         from .unit import UnitClass
         unit.fuel_pct = 100.0
-        lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
-        preset = lib.get("loadout_presets", {}).get(unit.loadout, {})
-        mags = preset.get("magazines", {})
-        if mags:
-            unit.magazines = dict(mags)
+        if not unit.refuel_only:
+            lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+            presets = lib.get("loadout_presets", {})
+            # Apply pending loadout change if the player or commander requested one
+            if unit.pending_loadout and unit.pending_loadout in presets:
+                unit.loadout = unit.pending_loadout
+                # Also update weapon_km_override from the new preset
+                new_preset = presets[unit.loadout]
+                if "weapon_km" in new_preset:
+                    unit.weapon_km_override = float(new_preset["weapon_km"])
+                else:
+                    unit.weapon_km_override = None
+            unit.pending_loadout = None  # always clear regardless
+            preset = presets.get(unit.loadout, {})
+            mags = preset.get("magazines", {})
+            if mags:
+                unit.magazines = dict(mags)
+        else:
+            unit.pending_loadout = None  # clear even on refuel-only stops
+        unit.refuel_only = False  # clear flag regardless
 
         # Restore previous mission so the unit resumes without player action.
         # Ground units never change their mission during rearm, so leave it as-is.
@@ -237,6 +328,143 @@ class SimulationEngine:
                 })
 
         return events
+
+    def _advance_missiles(self) -> None:
+        """Move each in-flight missile one tick toward its target."""
+        for missile in self.missiles.values():
+            if missile.intercepted or missile.ticks_remaining <= 0:
+                continue
+            dist_this_tick = missile.speed_kmh * (self.tick_duration / 3600.0)
+            dist_to_target = haversine(missile.lat, missile.lon, missile.target_lat, missile.target_lon)
+            if dist_this_tick >= dist_to_target:
+                missile.lat = missile.target_lat
+                missile.lon = missile.target_lon
+                missile.ticks_remaining = 0
+            else:
+                hdg = bearing(missile.lat, missile.lon, missile.target_lat, missile.target_lon)
+                missile.heading = hdg
+                missile.lat, missile.lon = destination(missile.lat, missile.lon, hdg, dist_this_tick)
+                missile.ticks_remaining -= 1
+
+    def _process_missile_intercepts(self) -> List[dict]:
+        """
+        SAM units and intercept-capable ships/fighters attempt to shoot down
+        in-flight enemy missiles they can detect within weapon range.
+        """
+        events: List[dict] = []
+        enemy_of: Dict[str, str] = {"blue": "red", "red": "blue"}
+
+        for missile in list(self.missiles.values()):
+            if missile.intercepted or missile.ticks_remaining <= 0:
+                continue
+            interceptor_side = enemy_of[missile.side]
+
+            for unit in self.units.values():
+                if unit.destroyed or unit.rearming:
+                    continue
+                if unit.side.value != interceptor_side:
+                    continue
+                lib = UNIT_TYPE_LIB.get(unit.unit_type, {})
+                if not lib.get("intercept_capable", False):
+                    continue
+                # Interceptor must have AA rounds
+                if unit.magazines and unit.magazines.get("aa", -1) == 0:
+                    continue
+                # Check if interceptor can detect the missile
+                det_range = missile_detection_range(unit, missile.altitude_m, missile.rcs)
+                dist = haversine(unit.lat, unit.lon, missile.lat, missile.lon)
+                if dist > det_range:
+                    continue
+                # Check weapon range against airborne targets
+                w_range = weapon_range(unit, "air")
+                if dist > w_range:
+                    continue
+                # Probability of kill
+                base_pk: float = lib.get("intercept_pk", 0.5)
+                rcs_mod = min(1.0, (missile.rcs / 0.05) ** 0.25)  # harder to kill low-RCS
+                speed_mod = max(0.3, 1.0 - (missile.speed_kmh - 800) / 5000)  # harder vs fast
+                final_pk = base_pk * rcs_mod * speed_mod
+                if random.random() < final_pk:
+                    missile.intercepted = True
+                    if unit.magazines and "aa" in unit.magazines:
+                        unit.magazines["aa"] = max(0, unit.magazines["aa"] - 1)
+                    events.append({
+                        "type": "missile_intercept",
+                        "interceptor_id": unit.id,
+                        "interceptor_name": unit.name,
+                        "firer_id": missile.firer_id,
+                        "firer_name": missile.firer_name,
+                        "missile_type": missile.ammo_type,
+                        "side": unit.side.value,
+                        "tick": None,
+                    })
+                    break  # missile destroyed
+        return events
+
+    def _apply_missile_impacts(self) -> List[dict]:
+        """Apply damage for missiles that have reached their targets; remove completed missiles."""
+        events: List[dict] = []
+        for mid, missile in list(self.missiles.items()):
+            if missile.intercepted:
+                del self.missiles[mid]
+                continue
+            if missile.ticks_remaining > 0:
+                continue
+            # Impact
+            target = self.units.get(missile.target_id)
+            if target and not target.destroyed:
+                target.hp = max(0.0, target.hp - missile.damage)
+                events.append({
+                    "type": "engagement",
+                    "attacker_id": missile.firer_id,
+                    "attacker_name": missile.firer_name,
+                    "target_id": target.id,
+                    "target_name": target.name,
+                    "damage": missile.damage,
+                    "target_hp": target.hp,
+                    "target_max_hp": target.max_hp,
+                    "tick": None,
+                })
+                if target.hp <= 0.0:
+                    target.destroyed = True
+                    target.speed = 0.0
+                    target.waypoints = []
+                    target.mission = None
+                    events.append({
+                        "type": "destroyed",
+                        "unit_id": target.id,
+                        "unit_name": target.name,
+                        "side": target.side.value,
+                        "tick": None,
+                    })
+            del self.missiles[mid]
+        return events
+
+    def _build_missile_detection(self) -> Dict[str, set]:
+        """
+        For each side, the set of missile IDs they can see:
+        - the firing side always tracks their own missiles
+        - the opposing side can see a missile if any of their units can detect it
+        """
+        detected: Dict[str, set] = {"blue": set(), "red": set()}
+        enemy_of: Dict[str, str] = {"blue": "red", "red": "blue"}
+        active = [u for u in self.units.values() if not u.destroyed]
+
+        for missile in self.missiles.values():
+            if missile.intercepted:
+                continue
+            # Firing side always knows where their own missiles are
+            detected[missile.side].add(missile.id)
+            # Enemy side must detect via radar
+            e_side = enemy_of[missile.side]
+            for scanner in active:
+                if scanner.side.value != e_side:
+                    continue
+                det_range = missile_detection_range(scanner, missile.altitude_m, missile.rcs)
+                if haversine(scanner.lat, scanner.lon, missile.lat, missile.lon) <= det_range:
+                    detected[e_side].add(missile.id)
+                    break
+        return detected
 
     def _advance_unit(self, unit: Unit) -> None:
         if not unit.waypoints:
@@ -313,6 +541,7 @@ class SimulationEngine:
             d["sensor_km"] = sensor_range(u)
             d["weapon_km"] = weapon_range(u)
             d["valid_targets"] = unit_vtargets(u)
+            d["loadout_presets"] = list(UNIT_TYPE_LIB.get(u.unit_type, {}).get("loadout_presets", {}).keys())
             unit_states.append(d)
         return {
             "sim_time": self.sim_time.isoformat(),
@@ -327,4 +556,7 @@ class SimulationEngine:
                 side: [g.to_dict() for g in cmd.goals]
                 for side, cmd in self.commanders.items()
             },
+            "missiles": [m.model_dump() for m in self.missiles.values() if not m.intercepted],
+            "blue_detected_missiles": list(self._missile_detection["blue"]),
+            "red_detected_missiles": list(self._missile_detection["red"]),
         }

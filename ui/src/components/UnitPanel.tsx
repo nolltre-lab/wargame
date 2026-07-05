@@ -89,6 +89,15 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
     onSend({ type: 'assign_mission', unit_id: unit.id, mission_type: 'rtb' });
   };
 
+  const setPendingLoadout = async (loadout: string) => {
+    if (!unit) return;
+    await fetch(`http://localhost:8000/unit/${unit.id}/loadout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loadout }),
+    });
+  };
+
   const clearMission = () => {
     if (!unit) return;
     onSend({ type: 'clear_mission', unit_id: unit.id });
@@ -161,6 +170,62 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                 </div>
               )}
 
+              {/* Loadout picker — shown for multi-loadout units */}
+              {(unit.loadout_presets?.length ?? 0) > 1 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ color: '#4a6a8a', fontSize: 10, marginBottom: 4, letterSpacing: 1 }}>
+                    LOADOUT
+                    {unit.pending_loadout && unit.pending_loadout !== unit.loadout && (
+                      <span style={{ color: '#ddaa22', marginLeft: 6 }}>
+                        → {unit.pending_loadout} (next rearm)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {unit.loadout_presets.map(preset => {
+                      const isCurrent = preset === unit.loadout;
+                      const isPending = preset === unit.pending_loadout && preset !== unit.loadout;
+                      return (
+                        <button
+                          key={preset}
+                          onClick={() => setPendingLoadout(preset)}
+                          style={{
+                            padding: '3px 7px',
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                            cursor: 'pointer',
+                            fontFamily: '"Courier New", monospace',
+                            background: isCurrent ? '#001a30' : isPending ? '#1a1200' : '#060c18',
+                            border: isCurrent
+                              ? '1px solid #4488ff'
+                              : isPending
+                              ? '1px solid #ddaa22'
+                              : '1px solid #1e2e4a',
+                            color: isCurrent ? '#4488ff' : isPending ? '#ddaa22' : '#4a6a8a',
+                          }}
+                        >
+                          {isCurrent ? '● ' : isPending ? '→ ' : ''}{preset}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Loadout selection window */}
+              {unit.awaiting_loadout && (
+                <div style={{
+                  background: '#0d1020', border: '1px solid #6644aa',
+                  padding: '5px 8px', marginBottom: 8, fontSize: 11, color: '#aa88ff',
+                }}>
+                  ◈ SELECT LOADOUT · {unit.loadout_selection_ticks_left} tick{unit.loadout_selection_ticks_left !== 1 ? 's' : ''} remaining
+                  {unit.pending_loadout && unit.pending_loadout !== unit.loadout
+                    ? <div style={{ color: '#ddaa22', fontSize: 10, marginTop: 2 }}>→ {unit.pending_loadout} queued</div>
+                    : <div style={{ color: '#6a6a8a', fontSize: 10, marginTop: 2 }}>no change — will rearm with {unit.loadout || 'current'}</div>
+                  }
+                </div>
+              )}
+
               {/* Rearming indicator */}
               {unit.rearming && (
                 <div style={{
@@ -168,6 +233,11 @@ export function UnitPanel({ onSend }: UnitPanelProps) {
                   padding: '5px 8px', marginBottom: 8, fontSize: 11, color: '#22cc66',
                 }}>
                   ↩ REARMING · {unit.rearm_ticks_left} tick{unit.rearm_ticks_left !== 1 ? 's' : ''} remaining
+                  {unit.pending_loadout && unit.pending_loadout !== unit.loadout && (
+                    <div style={{ color: '#ddaa22', fontSize: 10, marginTop: 2 }}>
+                      → switching to {unit.pending_loadout}
+                    </div>
+                  )}
                 </div>
               )}
             </>

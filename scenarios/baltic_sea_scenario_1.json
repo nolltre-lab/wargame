@@ -2,15 +2,15 @@
   "name": "baltic_sea_scenario_1",
   "start_time": "2024-06-15T04:00:00Z",
   "tick_duration_seconds": 60,
-  "maritime_corridors": [],
   "objectives": [
     {
       "id": "amari_ab",
-      "name": "\u00c4mari Air Base",
+      "name": "Ämari Air Base",
       "lat": 59.482,
       "lon": 24.2083,
       "type": "airfield",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "estonia"
     },
     {
       "id": "tallinn",
@@ -18,7 +18,8 @@
       "lat": 59.4369,
       "lon": 24.7536,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "estonia"
     },
     {
       "id": "tallinn_port",
@@ -26,7 +27,8 @@
       "lat": 59.4444,
       "lon": 24.7519,
       "type": "port",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "estonia"
     },
     {
       "id": "narva",
@@ -34,7 +36,8 @@
       "lat": 59.3769,
       "lon": 28.1795,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "estonia"
     },
     {
       "id": "riga",
@@ -42,7 +45,8 @@
       "lat": 56.946,
       "lon": 24.1059,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "latvia"
     },
     {
       "id": "riga_airport",
@@ -50,15 +54,17 @@
       "lat": 56.9236,
       "lon": 23.9711,
       "type": "airfield",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "latvia"
     },
     {
       "id": "liepaja_port",
-      "name": "Liep\u0101ja Naval Port",
+      "name": "Liepāja Naval Port",
       "lat": 56.5104,
       "lon": 21.0129,
       "type": "port",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "latvia"
     },
     {
       "id": "ventspils",
@@ -66,15 +72,17 @@
       "lat": 57.3902,
       "lon": 21.564,
       "type": "port",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "latvia"
     },
     {
       "id": "siauliai_ab",
-      "name": "\u0160iauliai Air Base",
+      "name": "Šiauliai Air Base",
       "lat": 55.8939,
       "lon": 23.3953,
       "type": "airfield",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "lithuania"
     },
     {
       "id": "vilnius",
@@ -82,7 +90,8 @@
       "lat": 54.6872,
       "lon": 25.2797,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "lithuania"
     },
     {
       "id": "kaunas",
@@ -90,15 +99,17 @@
       "lat": 54.8985,
       "lon": 23.8832,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "lithuania"
     },
     {
       "id": "klaipeda",
-      "name": "Klaip\u0117da Port",
+      "name": "Klaipėda Port",
       "lat": 55.7033,
       "lon": 21.1442,
       "type": "port",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "lithuania"
     },
     {
       "id": "malbork_ab",
@@ -106,15 +117,17 @@
       "lat": 54.0256,
       "lon": 19.1347,
       "type": "airfield",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "poland"
     },
     {
       "id": "gdansk",
-      "name": "Gda\u0144sk",
+      "name": "Gdańsk",
       "lat": 54.352,
       "lon": 18.6466,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "poland"
     },
     {
       "id": "gdynia_naval",
@@ -122,7 +135,8 @@
       "lat": 54.5262,
       "lon": 18.5528,
       "type": "base",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "poland"
     },
     {
       "id": "helsinki",
@@ -130,7 +144,8 @@
       "lat": 60.1699,
       "lon": 24.9384,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "finland"
     },
     {
       "id": "helsinki_airport",
@@ -138,7 +153,8 @@
       "lat": 60.3172,
       "lon": 24.9633,
       "type": "airfield",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "finland"
     },
     {
       "id": "turku",
@@ -146,7 +162,8 @@
       "lat": 60.4518,
       "lon": 22.2666,
       "type": "port",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "finland"
     },
     {
       "id": "stockholm",
@@ -154,7 +171,8 @@
       "lat": 59.3293,
       "lon": 18.0686,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "sweden"
     },
     {
       "id": "gotland",
@@ -162,7 +180,8 @@
       "lat": 57.6389,
       "lon": 18.2947,
       "type": "base",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "sweden"
     },
     {
       "id": "karlskrona",
@@ -170,7 +189,8 @@
       "lat": 56.1612,
       "lon": 15.5869,
       "type": "base",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "sweden"
     },
     {
       "id": "kaliningrad",
@@ -178,7 +198,8 @@
       "lat": 54.7104,
       "lon": 20.51,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "russia"
     },
     {
       "id": "baltiysk",
@@ -186,7 +207,8 @@
       "lat": 54.6521,
       "lon": 19.9,
       "type": "base",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "russia"
     },
     {
       "id": "st_petersburg",
@@ -194,7 +216,8 @@
       "lat": 59.9343,
       "lon": 30.3351,
       "type": "city",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "russia"
     },
     {
       "id": "kronstadt",
@@ -202,7 +225,8 @@
       "lat": 59.9948,
       "lon": 29.757,
       "type": "base",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": "russia"
     },
     {
       "id": "gulf_of_finland",
@@ -210,7 +234,8 @@
       "lat": 60,
       "lon": 26,
       "type": "maritime",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": null
     },
     {
       "id": "baltic_central",
@@ -218,7 +243,8 @@
       "lat": 57.5,
       "lon": 19,
       "type": "maritime",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": null
     },
     {
       "id": "kaliningrad_sea",
@@ -226,7 +252,8 @@
       "lat": 55,
       "lon": 20,
       "type": "maritime",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": null
     },
     {
       "id": "danish_straits",
@@ -234,7 +261,8 @@
       "lat": 55.8,
       "lon": 12.5,
       "type": "maritime",
-      "controlling_side": null
+      "controlling_side": null,
+      "country": null
     }
   ],
   "units": [
@@ -250,7 +278,15 @@
       "airborne": true,
       "loadout": "",
       "home_base_lat": null,
-      "home_base_lon": null
+      "home_base_lon": null,
+      "mission": {
+        "type": "patrol",
+        "objective_id": "helsinki",
+        "patrol_lat": 59.557064895269804,
+        "patrol_lon": 23.330444335936335,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "blue_f35a_1782502315093",
@@ -264,7 +300,15 @@
       "airborne": true,
       "loadout": "",
       "home_base_lat": null,
-      "home_base_lon": null
+      "home_base_lon": null,
+      "mission": {
+        "type": "patrol",
+        "objective_id": "tallinn",
+        "patrol_lat": 58.91080133651647,
+        "patrol_lon": 23.44030761718554,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "red_su27s_1782502321633",
@@ -273,12 +317,20 @@
       "unit_class": "air",
       "unit_type": "su27s",
       "sidc": "SHAPMFF----E---",
-      "lat": 59.71810836331258,
-      "lon": 27.955688476560397,
+      "lat": 59.707026712864206,
+      "lon": 28.010620117185,
       "airborne": true,
       "loadout": "",
       "home_base_lat": null,
-      "home_base_lon": null
+      "home_base_lon": null,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 59.707026712864206,
+        "patrol_lon": 28.010620117185,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "red_su27s_1782502322118",
@@ -292,7 +344,15 @@
       "airborne": true,
       "loadout": "",
       "home_base_lat": null,
-      "home_base_lon": null
+      "home_base_lon": null,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 59.17640659553538,
+        "patrol_lon": 28.186401367185653,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "red_su30sm_1782590922370",
@@ -306,7 +366,15 @@
       "airborne": true,
       "loadout": "aa_focus",
       "home_base_lat": 59.9948,
-      "home_base_lon": 29.757
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 60.046623765546116,
+        "patrol_lon": 27.792729782473714,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "red_su30sm_1782590924607",
@@ -315,12 +383,20 @@
       "unit_class": "air",
       "unit_type": "su30sm",
       "sidc": "SHAPMFF----E---",
-      "lat": 59.9147109910098,
-      "lon": 27.82568876684948,
+      "lat": 59.85278567547584,
+      "lon": 27.835342053947357,
       "airborne": true,
       "loadout": "aa_focus",
       "home_base_lat": 59.9948,
-      "home_base_lon": 29.757
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 59.85278567547584,
+        "patrol_lon": 27.835342053947357,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "red_su30sm_1782590987521",
@@ -334,7 +410,15 @@
       "airborne": true,
       "loadout": "aa_focus",
       "home_base_lat": 59.9948,
-      "home_base_lon": 29.757
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 59.42651731647848,
+        "patrol_lon": 27.836675094973117,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     },
     {
       "id": "red_su30sm_1782590992537",
@@ -348,7 +432,28 @@
       "airborne": true,
       "loadout": "aa_focus",
       "home_base_lat": 59.9948,
-      "home_base_lon": 29.757
+      "home_base_lon": 29.757,
+      "mission": {
+        "type": "secure",
+        "objective_id": "tallinn",
+        "patrol_lat": 59.577060584052305,
+        "patrol_lon": 27.902593063724595,
+        "target_unit_id": null,
+        "status": "en_route"
+      }
     }
-  ]
+  ],
+  "coalitions": {
+    "blue": [
+      "estonia",
+      "latvia",
+      "lithuania",
+      "poland",
+      "finland",
+      "sweden"
+    ],
+    "red": [
+      "russia"
+    ]
+  }
 }

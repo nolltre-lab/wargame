@@ -189,6 +189,33 @@ async def get_theater(theater_id: str) -> dict:
         return json.load(f)
 
 
+# ── Territory boundary overlay ────────────────────────────────────────────────
+
+@app.get("/territories")
+async def get_territories() -> dict:
+    """
+    Return 12nm sea-zone polygons (offshore only, land excluded) as a GeoJSON
+    FeatureCollection.  Landlocked countries produce no feature.  The frontend
+    colours each strip by coalition based on its own objective/coalition state.
+    Routing code uses the full land+sea territory internally; this endpoint is
+    display-only.
+    """
+    from shapely.geometry import mapping as shapely_mapping
+    from engine import terrain as t
+
+    t._load_countries()
+    features = []
+    for i, poly in enumerate(t._c_sea_polys):
+        if poly.is_empty:
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": shapely_mapping(poly),
+            "properties": {"name": t._c_names[i]},
+        })
+    return {"type": "FeatureCollection", "features": features}
+
+
 # ── Commander goals endpoints ─────────────────────────────────────────────────
 
 @app.get("/goals")
@@ -212,6 +239,21 @@ async def set_goals(side: str, req: GoalsRequest) -> dict:
     sim.update_goals(side, req.goals)
     await broadcast(sim.get_state())
     return {"side": side, "goals": [g.to_dict() for g in sim.commanders[side].goals]}
+
+
+class LoadoutRequest(BaseModel):
+    loadout: str
+
+
+@app.post("/unit/{unit_id}/loadout")
+async def set_pending_loadout(unit_id: str, req: LoadoutRequest) -> dict:
+    """Set the loadout to apply when the unit next completes a rearm cycle."""
+    unit = sim.units.get(unit_id)
+    if unit is None:
+        raise HTTPException(status_code=404, detail="Unit not found")
+    unit.pending_loadout = req.loadout
+    await broadcast(sim.get_state())
+    return {"unit_id": unit_id, "pending_loadout": req.loadout}
 
 
 class LoadRequest(BaseModel):

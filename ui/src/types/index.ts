@@ -43,6 +43,10 @@ export interface Unit {
   home_base_lon: number | null;
   rearming: boolean;
   rearm_ticks_left: number;
+  awaiting_loadout: boolean;
+  loadout_selection_ticks_left: number;
+  pending_loadout: string | null;
+  loadout_presets: string[];
   data_link: boolean;
   is_surveillance: boolean;
   sensor_arc_deg: number | null;
@@ -59,10 +63,34 @@ export interface Objective {
   lon: number;
   type: ObjectiveType;
   controlling_side: Side | null;
+  country: string | null;
+}
+
+export type Coalitions = { blue: string[]; red: string[] };
+
+export interface SimMissile {
+  id: string;
+  firer_id: string;
+  firer_name: string;
+  target_id: string;
+  side: Side;
+  ammo_type: string;  // "aa" | "ag" | "as"
+  lat: number;
+  lon: number;
+  origin_lat: number;
+  origin_lon: number;
+  target_lat: number;
+  target_lon: number;
+  heading: number;
+  speed_kmh: number;
+  altitude_m: number;
+  rcs: number;
+  ticks_remaining: number;
+  total_ticks: number;
 }
 
 export interface CombatEvent {
-  type: 'engagement' | 'destroyed' | 'captured' | 'out_of_ammo' | 'low_fuel' | 'rtb_complete' | 'bingo_fuel' | 'winchester' | 'commander_assign';
+  type: 'engagement' | 'destroyed' | 'captured' | 'out_of_ammo' | 'low_fuel' | 'rtb_complete' | 'bingo_fuel' | 'winchester' | 'commander_assign' | 'missile_intercept';
   attacker_id?: string;
   attacker_name?: string;
   target_id?: string;
@@ -80,6 +108,11 @@ export interface CombatEvent {
   goal_type?: string;
   side?: Side;
   tick?: number;
+  // missile_intercept fields
+  interceptor_id?: string;
+  interceptor_name?: string;
+  firer_name?: string;
+  missile_type?: string;
 }
 
 export interface SideGoal {
@@ -103,6 +136,9 @@ export interface SimState {
   blue_detected: string[];
   red_detected: string[];
   goals: { blue: SideGoal[]; red: SideGoal[] };
+  missiles: SimMissile[];
+  blue_detected_missiles: string[];
+  red_detected_missiles: string[];
 }
 
 export type WsOutMessage =
@@ -119,6 +155,7 @@ export interface RingToggles {
   sensor: boolean;
   airWeapon: boolean;
   surfaceWeapon: boolean;
+  territory: boolean;
 }
 
 export interface UnitTypeInfo {
@@ -145,6 +182,7 @@ export interface TheaterInfo {
   id: string;
   name: string;
   description: string;
+  default_coalitions?: Coalitions;
 }
 
 export interface BuilderMission {

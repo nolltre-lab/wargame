@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useSimStore } from '../store/simStore';
-import type { Unit, Objective, CombatEvent, RingToggles } from '../types';
+import type { Unit, Objective, RingToggles, SimMissile } from '../types';
 import {
-  circlePolygon, conePolygon, lineFeature, interpolate,
+  circlePolygon, conePolygon, lineFeature,
   emptyFC, type RingFeature, type LineFeature,
 } from '../lib/geo';
 import { loadSidcImage } from '../lib/milsymbol';
@@ -12,7 +12,6 @@ import { loadSidcImage } from '../lib/milsymbol';
 const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 const INITIAL_CENTER: [number, number] = [26.5, 58.8];
 const INITIAL_ZOOM = 6;
-const MISSILE_MS = 900;
 
 // ─── GeoJSON helpers ──────────────────────────────────────────────────────────
 
@@ -99,27 +98,61 @@ function selectedFC(units: Unit[], sel: string | null): MapData {
   });
 }
 
-// ─── Missile animation ────────────────────────────────────────────────────────
+// ─── Missile rendering ────────────────────────────────────────────────────────
 
-interface Missile { fromLat: number; fromLon: number; toLat: number; toLon: number; startTime: number; color: string; }
-
-function missileColor(ac: string, tc: string) {
-  if (ac === 'air' && tc === 'air') return '#00ffff';
-  if (tc === 'air') return '#cc44ff';
-  if (ac === 'air') return '#ffdd00';
-  return '#ff6600';
-}
-
-function missileFC(anims: Missile[], now: number): MapData {
-  const feats: LineFeature[] = anims.map(a => {
-    const t = Math.min(1, (now - a.startTime) / MISSILE_MS);
-    const [lat, lon] = interpolate(a.fromLat, a.fromLon, a.toLat, a.toLon, t);
-    const f = lineFeature(a.fromLat, a.fromLon, lat, lon);
-    f.properties = { color: a.color };
+// Missile trail: line from origin to current position
+function missileTrailFC(missiles: SimMissile[]): MapData {
+  const feats: LineFeature[] = missiles.map(m => {
+    const f = lineFeature(m.origin_lat, m.origin_lon, m.lat, m.lon);
+    f.properties = { side: m.side, ammo: m.ammo_type };
     return f;
   });
   return md({ type: 'FeatureCollection', features: feats });
 }
+
+// Missile head: point at current position with heading and side/type info
+function missileHeadFC(missiles: SimMissile[]): MapData {
+  return md({
+    type: 'FeatureCollection',
+    features: missiles.map(m => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [m.lon, m.lat] },
+      properties: {
+        id: m.id,
+        side: m.side,
+        ammo: m.ammo_type,
+        heading: m.heading,
+        icon: `missile-${m.side}-${m.ammo_type}`,
+      },
+    })),
+  });
+}
+
+// Draw a small arrowhead canvas image for missile icons.
+// The arrow points north (heading=0). MapLibre rotates it per icon-rotate.
+function makeMissileIcon(color: string, glowColor: string): ImageData {
+  const w = 10, h = 18;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  // glow
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 4;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);    // tip (north)
+  ctx.lineTo(w, h * 0.85); // back-right
+  ctx.lineTo(w / 2, h * 0.6); // centre notch
+  ctx.lineTo(0, h * 0.85); // back-left
+  ctx.closePath();
+  ctx.fill();
+  return ctx.getImageData(0, 0, w, h);
+}
+
+const _MISSILE_COLORS: Record<string, Record<string, string>> = {
+  blue: { aa: '#00eeff', ag: '#ffdd00', as: '#ff8800' },
+  red:  { aa: '#ff00cc', ag: '#ffdd00', as: '#ff3300' },
+};
 
 // ─── Objective markers (HTML — static position, fine as markers) ──────────────
 
@@ -128,15 +161,61 @@ const OBJ_ICON: Record<string, string> = {
 };
 const SIDE_COLOR: Record<string, string> = { blue: '#4488ff', red: '#ff4444' };
 
-function createObjEl(obj: Objective): HTMLDivElement {
-  const el = document.createElement('div');
-  el.style.cssText =
-    `width:24px;height:24px;display:flex;align-items:center;justify-content:center;` +
-    `font-size:15px;color:${obj.controlling_side ? SIDE_COLOR[obj.controlling_side] : '#999'};` +
-    `text-shadow:0 0 5px #000,0 0 10px #000;pointer-events:none;user-select:none;`;
-  el.textContent = OBJ_ICON[obj.type] ?? '◇';
-  el.title = obj.name;
-  return el;
+function ensureObjPopupStyle() {
+  if (document.getElementById('obj-popup-style')) return;
+  const s = document.createElement('style');
+  s.id = 'obj-popup-style';
+  s.textContent = `
+    .obj-popup.maplibregl-popup { z-index: 999; }
+    .obj-popup .maplibregl-popup-content {
+      background: #070e1a !important; border: 1px solid #1e3a5a !important;
+      border-radius: 0 !important; padding: 8px 12px 10px !important;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.75) !important; min-width: 140px;
+    }
+    .obj-popup .maplibregl-popup-tip { display: none !important; }
+    .obj-popup .maplibregl-popup-close-button {
+      color: #4a6a8a !important; font-size: 15px !important;
+      top: 2px !important; right: 6px !important; line-height: 1 !important;
+    }
+    .obj-popup .maplibregl-popup-close-button:hover { color: #8aa8c8 !important; }
+  `;
+  document.head.appendChild(s);
+}
+
+function objPopupHTML(obj: Objective): string {
+  const icon = OBJ_ICON[obj.type] ?? '◇';
+  const sideCol = obj.controlling_side ? (SIDE_COLOR[obj.controlling_side] ?? '#5a7a9a') : '#5a7a9a';
+  const sideLabel = obj.controlling_side ? obj.controlling_side.toUpperCase() : 'NEUTRAL';
+  return `<div style="font-family:'Courier New',monospace;font-size:11px;color:#8aa8c8;line-height:1.8;">` +
+    `<div style="font-size:12px;color:#aaccee;letter-spacing:1px;margin-bottom:3px;padding-right:14px;">${obj.name}</div>` +
+    `<div style="color:#6688aa;">${icon}  ${obj.type.toUpperCase()}</div>` +
+    `<div style="color:${sideCol};">${sideLabel}</div>` +
+    (obj.country ? `<div style="color:#4a6a8a;font-size:10px;letter-spacing:1px;">${obj.country.toUpperCase()}</div>` : '') +
+    `</div>`;
+}
+
+// ─── Territory overlay ────────────────────────────────────────────────────────
+
+const API = 'http://localhost:8000';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GeoJsonFC = { type: 'FeatureCollection'; features: any[] };
+
+function buildTerritoryFC(raw: GeoJsonFC | null, objectives: Objective[], show: boolean): MapData {
+  if (!raw || !show) return md(emptyFC());
+  const countryToSide: Record<string, string> = {};
+  for (const obj of objectives) {
+    if (obj.country && obj.controlling_side && !countryToSide[obj.country.toLowerCase()]) {
+      countryToSide[obj.country.toLowerCase()] = obj.controlling_side;
+    }
+  }
+  return md({
+    type: 'FeatureCollection',
+    features: raw.features.map(f => ({
+      ...f,
+      properties: { ...f.properties, side: countryToSide[f.properties.name ?? ''] ?? 'neutral' },
+    })),
+  });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -150,27 +229,49 @@ export function MapView({ rings }: MapViewProps) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef<Set<string>>(new Set()); // loaded SIDC image IDs
   const objMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
-  const missilesRef = useRef<Missile[]>([]);
-  const rafRef = useRef<number | null>(null);
+  const objPopupRef = useRef<maplibregl.Popup | null>(null);
+  const objectivesRef = useRef<Objective[]>([]);
+  const missileIconsLoadedRef = useRef(false);
   const clickedRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
+  const [territoriesRaw, setTerritoriesRaw] = useState<GeoJsonFC | null>(null);
 
   const allUnits = useSimStore(s => s.units);
   const perspective = useSimStore(s => s.perspective);
   const blueDetected = useSimStore(s => s.blue_detected);
   const redDetected = useSimStore(s => s.red_detected);
+  const blueDetectedMissiles = useSimStore(s => s.blue_detected_missiles);
+  const redDetectedMissiles = useSimStore(s => s.red_detected_missiles);
+  const allMissiles = useSimStore(s => s.missiles);
   const objectives = useSimStore(s => s.objectives);
   const selectedUnitId = useSimStore(s => s.selectedUnitId);
-  const latestEvents = useSimStore(s => s.latestEvents);
   const selectUnit = useSimStore(s => s.selectUnit);
 
-  // Apply fog-of-war perspective filter
+  // Keep objectives ref current so popup click handler reads fresh controlling_side
+  objectivesRef.current = objectives;
+
+  // Fetch territory polygons once (cached by browser)
+  useEffect(() => {
+    fetch(`${API}/territories`)
+      .then(r => r.json())
+      .then(setTerritoriesRaw)
+      .catch(() => {/* optional overlay — ignore errors */});
+  }, []);
+
+  // Apply fog-of-war perspective filter for units
   const units = useMemo(() => {
     if (perspective === 'god') return allUnits;
     const mySide = perspective;
     const detectedSet = new Set(perspective === 'blue' ? blueDetected : redDetected);
     return allUnits.filter(u => u.side === mySide || detectedSet.has(u.id));
   }, [allUnits, perspective, blueDetected, redDetected]);
+
+  // Apply fog-of-war perspective filter for missiles
+  const missiles = useMemo(() => {
+    if (perspective === 'god') return allMissiles;
+    const detectedSet = new Set(perspective === 'blue' ? blueDetectedMissiles : redDetectedMissiles);
+    return allMissiles.filter(m => m.side === perspective || detectedSet.has(m.id));
+  }, [allMissiles, perspective, blueDetectedMissiles, redDetectedMissiles]);
 
   // ── Map init ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -189,6 +290,21 @@ export function MapView({ rings }: MapViewProps) {
       const src = (id: string) =>
         map.addSource(id, { type: 'geojson', data: md(emptyFC()) });
       const lay = (spec: maplibregl.LayerSpecification) => map.addLayer(spec);
+
+      // Territory boundaries (12nm sea/airspace)
+      src('territory');
+      lay({ id: 'territory-fill', type: 'fill', source: 'territory',
+        paint: {
+          'fill-color': ['match', ['get', 'side'],
+            'blue', '#4488ff', 'red', '#ff4444', '#aaaaaa'],
+          'fill-opacity': 0.07,
+        } });
+      lay({ id: 'territory-line', type: 'line', source: 'territory',
+        paint: {
+          'line-color': ['match', ['get', 'side'],
+            'blue', '#4488ff', 'red', '#ff4444', '#888888'],
+          'line-width': 1.2, 'line-opacity': 0.55, 'line-dasharray': [5, 4],
+        } });
 
       // Sensor rings
       src('sensor-rings');
@@ -216,12 +332,49 @@ export function MapView({ rings }: MapViewProps) {
           'line-width': ['case', ['get', 'selected'], 1.5, 0.8], 'line-opacity': 0.65,
           'line-dasharray': [6, 3] } });
 
-      // Missiles
-      src('missiles');
-      lay({ id: 'missile-line', type: 'line', source: 'missiles',
-        paint: { 'line-color': ['get', 'color'], 'line-width': 1.8, 'line-opacity': 0.9 } });
-      lay({ id: 'missile-glow', type: 'line', source: 'missiles',
-        paint: { 'line-color': ['get', 'color'], 'line-width': 6, 'line-opacity': 0.18, 'line-blur': 4 } });
+      // ── Missile icons — register arrowhead images per side × ammo type ────────
+      const SIDES = ['blue', 'red'] as const;
+      const AMMO_TYPES = ['aa', 'ag', 'as'] as const;
+      for (const side of SIDES) {
+        for (const ammo of AMMO_TYPES) {
+          const key = `missile-${side}-${ammo}`;
+          const color = _MISSILE_COLORS[side]?.[ammo] ?? '#ffffff';
+          const glow = side === 'blue' ? '#0044ff' : '#ff0000';
+          const img = makeMissileIcon(color, glow);
+          if (!map.hasImage(key)) map.addImage(key, img, { pixelRatio: 2 });
+        }
+      }
+      missileIconsLoadedRef.current = true;
+
+      // Missile trail (line from origin to current position)
+      src('missile-trail');
+      lay({ id: 'missile-trail-glow', type: 'line', source: 'missile-trail',
+        paint: {
+          'line-color': ['case',
+            ['==', ['get', 'side'], 'blue'], '#4488ff',
+            '#ff4444'],
+          'line-width': 5, 'line-opacity': 0.12, 'line-blur': 3,
+        } });
+      lay({ id: 'missile-trail-line', type: 'line', source: 'missile-trail',
+        paint: {
+          'line-color': ['case',
+            ['==', ['get', 'side'], 'blue'], '#88aaff',
+            '#ff8888'],
+          'line-width': 0.8, 'line-opacity': 0.55, 'line-dasharray': [4, 3],
+        } });
+
+      // Missile head (icon at current position, rotated by heading)
+      src('missile-head');
+      lay({ id: 'missile-icon', type: 'symbol', source: 'missile-head',
+        layout: {
+          'icon-image': ['get', 'icon'],
+          'icon-size': 1.2,
+          'icon-rotate': ['get', 'heading'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      });
 
       // Selection ring (circle layer, coordinate-exact like all GeoJSON)
       src('sel-unit');
@@ -270,6 +423,9 @@ export function MapView({ rings }: MapViewProps) {
       });
       map.on('click', () => {
         if (clickedRef.current) { clickedRef.current = false; return; }
+        // Close objective popup on bare canvas click
+        objPopupRef.current?.remove();
+        objPopupRef.current = null;
         selectUnit(null);
       });
       map.on('mouseenter', 'unit-symbols', (e) => {
@@ -284,7 +440,6 @@ export function MapView({ rings }: MapViewProps) {
     });
 
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       objMarkersRef.current.forEach(m => m.remove());
       objMarkersRef.current.clear();
       map.remove();
@@ -293,7 +448,7 @@ export function MapView({ rings }: MapViewProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Rings + selection ring ─────────────────────────────────────────────────
+  // ── Rings + selection ring + territory ────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -303,7 +458,8 @@ export function MapView({ rings }: MapViewProps) {
     sd('air-rings',    weaponRings(units, 'air', rings.airWeapon, selectedUnitId));
     sd('srf-rings',    weaponRings(units, 'surface', rings.surfaceWeapon, selectedUnitId));
     sd('sel-unit',     selectedFC(units, selectedUnitId));
-  }, [mapReady, units, rings, selectedUnitId]);
+    sd('territory',    buildTerritoryFC(territoriesRaw, objectives, rings.territory));
+  }, [mapReady, units, rings, selectedUnitId, territoriesRaw, objectives]);
 
   // ── Unit icons (async load images then update GeoJSON) ────────────────────
   useEffect(() => {
@@ -333,7 +489,7 @@ export function MapView({ rings }: MapViewProps) {
     ).then(push);
   }, [mapReady, units]);
 
-  // ── Objective markers (HTML markers are fine for static points) ───────────
+  // ── Objective markers ─────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || objectives.length === 0) return;
@@ -344,45 +500,45 @@ export function MapView({ rings }: MapViewProps) {
     objectives.forEach(obj => {
       const existing = objMarkersRef.current.get(obj.id);
       if (existing) {
-        // Update colour when controlling_side changes
         existing.getElement().style.color =
-          obj.controlling_side ? SIDE_COLOR[obj.controlling_side] : '#999';
+          obj.controlling_side ? (SIDE_COLOR[obj.controlling_side] ?? '#999') : '#999';
         return;
       }
-      const m = new maplibregl.Marker({ element: createObjEl(obj), anchor: 'center' })
+      const el = document.createElement('div');
+      el.style.cssText =
+        `width:26px;height:26px;display:flex;align-items:center;justify-content:center;` +
+        `font-size:15px;color:${obj.controlling_side ? (SIDE_COLOR[obj.controlling_side] ?? '#999') : '#999'};` +
+        `text-shadow:0 0 5px #000,0 0 10px #000;cursor:pointer;user-select:none;`;
+      el.textContent = OBJ_ICON[obj.type] ?? '◇';
+      el.title = obj.name;
+      el.addEventListener('mouseenter', () => { el.style.filter = 'brightness(1.4)'; });
+      el.addEventListener('mouseleave', () => { el.style.filter = ''; });
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        objPopupRef.current?.remove();
+        const current = objectivesRef.current.find(o => o.id === obj.id) ?? obj;
+        ensureObjPopupStyle();
+        objPopupRef.current = new maplibregl.Popup({
+          closeButton: true, className: 'obj-popup', offset: 14, maxWidth: '240px',
+        })
+          .setLngLat([obj.lon, obj.lat])
+          .setHTML(objPopupHTML(current))
+          .addTo(map);
+      });
+      const m = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([obj.lon, obj.lat])
         .addTo(map);
       objMarkersRef.current.set(obj.id, m);
     });
   }, [mapReady, objectives]);
 
-  // ── Missile animations ────────────────────────────────────────────────────
+  // ── Missile rendering (state-driven, updates each tick) ──────────────────
   useEffect(() => {
-    if (!mapReady || !latestEvents.length) return;
-    const umap = new Map(units.map(u => [u.id, u]));
-    latestEvents
-      .filter((e): e is CombatEvent & { type: 'engagement' } => e.type === 'engagement')
-      .forEach(e => {
-        const a = umap.get(e.attacker_id ?? '');
-        const t = umap.get(e.target_id ?? '');
-        if (a && t) missilesRef.current.push({
-          fromLat: a.lat, fromLon: a.lon, toLat: t.lat, toLon: t.lon,
-          startTime: performance.now(),
-          color: missileColor(a.unit_class, t.unit_class),
-        });
-      });
-    if (missilesRef.current.length > 0 && rafRef.current === null) {
-      const frame = () => {
-        const m = mapRef.current;
-        if (!m) return;
-        const now = performance.now();
-        missilesRef.current = missilesRef.current.filter(a => now - a.startTime < MISSILE_MS);
-        (m.getSource('missiles') as maplibregl.GeoJSONSource)?.setData(missileFC(missilesRef.current, now));
-        rafRef.current = missilesRef.current.length > 0 ? requestAnimationFrame(frame) : null;
-      };
-      rafRef.current = requestAnimationFrame(frame);
-    }
-  }, [mapReady, latestEvents, units]);
+    const m = mapRef.current;
+    if (!m || !mapReady || !missileIconsLoadedRef.current) return;
+    (m.getSource('missile-trail') as maplibregl.GeoJSONSource)?.setData(missileTrailFC(missiles));
+    (m.getSource('missile-head')  as maplibregl.GeoJSONSource)?.setData(missileHeadFC(missiles));
+  }, [mapReady, missiles]);
 
   return <div ref={mapContainer} style={{ position: 'absolute', inset: 0 }} />;
 }

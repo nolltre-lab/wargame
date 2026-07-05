@@ -78,6 +78,15 @@ function formatEvent(e: CombatEvent): { text: string; color: string } {
       color,
     };
   }
+  if (e.type === 'missile_intercept') {
+    const side = e.side ?? 'unknown';
+    const color = side in SIDE_COLOR ? SIDE_COLOR[side as 'blue' | 'red'] : '#aaa';
+    const cat = e.missile_type === 'aa' ? 'AAM' : e.missile_type === 'ag' ? 'ALCM' : e.missile_type === 'as' ? 'ASM' : (e.missile_type ?? 'missile');
+    return {
+      text: `◎ ${e.interceptor_name} [${side.toUpperCase()}] INTERCEPTS ${cat} from ${e.firer_name ?? '?'} (T+${e.tick ?? '?'})`,
+      color,
+    };
+  }
   return { text: JSON.stringify(e), color: '#666' };
 }
 
